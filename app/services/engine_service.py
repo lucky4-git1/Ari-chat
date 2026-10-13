@@ -198,6 +198,21 @@ def clean_response_text(text: str) -> str:
     if pat and pat not in ["#", "_Static", "Statics", "⏤", "<nooutput>"]:
         text = strip_repeating_suffix(text, pat)
     
+    # Strip web scrape button artifacts like 'Copy', 'Copied'
+    text = re.sub(r'^(?:Copy|Copied)\s*\n?', '', text, flags=re.MULTILINE | re.IGNORECASE)
+    text = re.sub(r'\n(?:Copy|Copied)\s*\n?', '\n', text, flags=re.IGNORECASE)
+
+    # Cut off simulated subsequent user turns
+    simulated_turns = [
+        r'\n(?:User|Human|Question|Prompt):\s*',
+        r'\n###\s*(?:User|Human|Prompt)',
+        r'\n(?:make a navbar|how to make|can you make|can u make|what is)\b'
+    ]
+    for sim in simulated_turns:
+        m = re.search(sim, text, re.IGNORECASE)
+        if m and m.start() > 20: # ensure we don't cut off immediate start
+            text = text[:m.start()]
+
     # Auto-fence bare HTML code so browsers highlight it instead of executing live elements
     if "```" not in text:
         html_match = re.search(r'<(?:nav|ul|ol|form|html|body|header|footer|section|main|div)\b', text, re.IGNORECASE)
@@ -206,6 +221,10 @@ def clean_response_text(text: str) -> str:
             prefix = text[:start_idx].rstrip()
             code_part = text[start_idx:].strip()
             text = f"{prefix}\n\n```html\n{code_part}\n```" if prefix else f"```html\n{code_part}\n```"
+
+    # Auto-close unclosed code fences if generation was truncated mid-code
+    if text.count("```") % 2 != 0:
+        text = text.rstrip() + "\n```"
 
     return text.strip()
 
@@ -281,13 +300,18 @@ STOP_WORDS = [
     "<nooutput>",
     "\n#",
     "\n<|im_start|>",
-    "\n<|im_end|>"
+    "\n<|im_end|>",
+    "\nUser:",
+    "\nHuman:",
+    "\nQuestion:",
+    "\n### User",
+    "\n### Human"
 ]
 
 async def stream_chat_completion(
     messages: List[Dict[str, str]],
     model: str = DEFAULT_MODEL,
-    temperature: float = 0.7,
+    temperature: float = 0.35,
     reasoning_mode: bool = False
 ) -> AsyncGenerator[str, None]:
     """Streams chat tokens from Standalone llama-server (OpenAI format) or Ollama with circuit breakers."""
@@ -331,16 +355,16 @@ async def stream_chat_completion(
 
 async def _stream_standalone(
     messages: List[Dict[str, str]],
-    temperature: float = 0.7
+    temperature: float = 0.35
 ) -> AsyncGenerator[str, None]:
     """Streams tokens via OpenAI SSE format from standalone llama-server."""
     url = f"{STANDALONE_BASE_URL}/v1/chat/completions"
     payload = {
         "messages": messages,
         "temperature": temperature,
-        "presence_penalty": 0.3,
-        "frequency_penalty": 0.4,
-        "max_tokens": 512,
+        "presence_penalty": 0.2,
+        "frequency_penalty": 0.3,
+        "max_tokens": 1024,
         "stop": STOP_WORDS,
         "stream": True
     }
