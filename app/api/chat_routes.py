@@ -178,8 +178,8 @@ async def send_message_stream(
 
     ollama_messages = [{"role": "system", "content": system_prompt}]
     
-    # Append recent conversation history (last 4 messages for optimal CPU speed)
-    prior_messages = conv.messages[-4:]
+    # Append conversation history (up to last 10 messages for rich multi-turn context)
+    prior_messages = conv.messages[-10:]
     for m in prior_messages:
         ollama_messages.append({"role": m.role, "content": m.content})
 

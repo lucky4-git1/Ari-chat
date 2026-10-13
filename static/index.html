@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ari Chat — Powered by Ari-LLM 1.5B</title>
+  <title>Ari — Intelligence Canvas</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,13 +12,9 @@
       darkMode: 'class',
       theme: {
         extend: {
-          colors: {
-            brand: {
-              50: '#eef2ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Inter', 'Roboto', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
           }
         }
       }
@@ -38,88 +34,68 @@
   <!-- Custom Style -->
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body class="bg-[#131418] text-slate-100 flex h-screen w-screen overflow-hidden antialiased select-none">
+<body class="flex h-screen w-screen overflow-hidden antialiased select-none">
 
   <!-- Mobile Sidebar Backdrop -->
-  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 z-30 hidden md:hidden"></div>
+  <div id="sidebar-backdrop" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden"></div>
 
   <!-- Left Sidebar -->
-  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-72 bg-[#1a1c23] border-r border-[#2e3446] flex flex-col transition-transform duration-300 transform -translate-x-full md:relative md:translate-x-0">
-    <!-- Sidebar Header -->
-    <div class="p-4 border-b border-[#2e3446] flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <i class="fa-solid fa-brain text-white text-base"></i>
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 border-r flex flex-col transition-transform duration-200 transform -translate-x-full md:relative md:translate-x-0">
+    <!-- Sidebar Header with Bespoke Ari Monogram -->
+    <div class="h-14 px-4 border-b flex items-center justify-between" style="border-color: var(--border-subtle)">
+      <div class="flex items-center gap-2.5">
+        <div class="w-7 h-7 flex items-center justify-center text-current">
+          <svg viewBox="0 0 64 64" fill="none" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+            <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+          </svg>
         </div>
-        <div>
-          <h1 class="font-bold text-sm tracking-wide text-white flex items-center gap-1.5">
-            Ari Chat
-            <span class="text-[10px] bg-indigo-500/20 text-indigo-400 px-1.5 py-0.5 rounded font-mono font-medium">1.5B</span>
-          </h1>
-          <p class="text-[11px] text-slate-400">Autonomous Assistant</p>
-        </div>
+        <span class="font-semibold text-sm tracking-tight">Ari</span>
       </div>
-      <button id="close-sidebar-btn" class="md:hidden text-slate-400 hover:text-white p-1">
-        <i class="fa-solid fa-xmark text-lg"></i>
+      <button id="close-sidebar-btn" class="md:hidden text-zinc-400 hover:text-current p-1">
+        <i class="fa-solid fa-xmark text-sm"></i>
       </button>
     </div>
 
-    <!-- New Chat & Model Selector -->
-    <div class="p-3 space-y-2 border-b border-[#2e3446]">
-      <button id="new-chat-btn" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition-all shadow-md shadow-indigo-600/20 group">
+    <!-- New Chat & Search -->
+    <div class="p-3 space-y-2 border-b" style="border-color: var(--border-subtle)">
+      <button id="new-chat-btn" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium border transition-colors card-minimal">
         <span class="flex items-center gap-2">
-          <i class="fa-solid fa-plus text-xs group-hover:rotate-90 transition-transform"></i>
+          <i class="fa-solid fa-plus text-[10px]"></i>
           New Chat
         </span>
-        <span class="text-[10px] bg-indigo-700/60 px-1.5 py-0.5 rounded text-indigo-200">Ctrl+O</span>
+        <span class="text-[10px] text-zinc-400 font-mono">⌘O</span>
       </button>
 
       <div class="relative">
-        <select id="model-select" class="w-full bg-[#222530] text-xs text-slate-300 border border-[#2e3446] rounded-lg px-3 py-2 outline-none focus:border-indigo-500 appearance-none cursor-pointer">
-          <option value="ari-assistant" selected>⚡ Ari-LLM 1.5B (Assistant)</option>
-          <option value="ari-rewritebot">🔄 Ari-RewriteBot (135M)</option>
-        </select>
-        <div class="absolute right-3 top-2.5 pointer-events-none text-slate-400 text-xs">
-          <i class="fa-solid fa-chevron-down"></i>
-        </div>
-      </div>
-    </div>
-
-    <!-- Conversations Search -->
-    <div class="px-3 pt-3">
-      <div class="relative">
-        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-        <input id="search-conv-input" type="text" placeholder="Search chats..." class="w-full bg-[#131418] border border-[#2e3446] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-300 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-zinc-400 text-xs"></i>
+        <input id="search-conv-input" type="text" placeholder="Search..." class="w-full bg-transparent border rounded-lg pl-8 pr-3 py-1.5 text-xs placeholder-zinc-400 outline-none" style="border-color: var(--border-subtle)">
       </div>
     </div>
 
     <!-- Conversation List -->
-    <div class="flex-1 overflow-y-auto px-2 py-3 space-y-1" id="conversations-list">
+    <div class="flex-1 overflow-y-auto px-2 py-2 space-y-0.5" id="conversations-list">
       <!-- Injected dynamically -->
-      <div class="text-center py-8 text-xs text-slate-500">
-        <i class="fa-solid fa-spinner fa-spin text-indigo-400 mb-2 text-base"></i>
+      <div class="text-center py-8 text-xs text-zinc-400">
         <p>Loading discussions...</p>
       </div>
     </div>
 
     <!-- User Profile & Action Footer -->
-    <div class="p-3 border-t border-[#2e3446] bg-[#16181f] flex items-center justify-between">
+    <div class="p-3 border-t flex items-center justify-between" style="border-color: var(--border-subtle)">
       <div class="flex items-center gap-2.5 min-w-0">
-        <div id="user-avatar" class="w-8 h-8 rounded-full bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs flex items-center justify-center shrink-0">
+        <div id="user-avatar" class="w-7 h-7 rounded-md border flex items-center justify-center text-xs font-semibold shrink-0" style="border-color: var(--border-subtle)">
           U
         </div>
         <div class="min-w-0">
-          <p id="user-name" class="text-xs font-semibold text-slate-200 truncate">Guest</p>
-          <p id="user-status" class="text-[10px] text-emerald-400 flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
-          </p>
+          <p id="user-name" class="text-xs font-medium truncate">Guest</p>
         </div>
       </div>
-      <div class="flex items-center gap-1 text-slate-400">
-        <button id="memory-modal-btn" title="View Persistent Memories" class="p-1.5 hover:text-indigo-400 hover:bg-[#222530] rounded-lg transition-colors">
-          <i class="fa-solid fa-database text-xs"></i>
+      <div class="flex items-center gap-1 text-zinc-400">
+        <button id="memory-modal-btn" title="View Memories" class="p-1.5 hover:text-current rounded-md transition-colors">
+          <i class="fa-solid fa-fingerprint text-xs"></i>
         </button>
-        <button id="logout-btn" title="Log Out" class="p-1.5 hover:text-rose-400 hover:bg-[#222530] rounded-lg transition-colors">
+        <button id="logout-btn" title="Log Out" class="p-1.5 hover:text-rose-500 rounded-md transition-colors">
           <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
         </button>
       </div>
@@ -127,90 +103,83 @@
   </aside>
 
   <!-- Main Content Area -->
-  <main class="flex-1 flex flex-col h-full overflow-hidden bg-[#131418]">
-    <!-- Top Navbar -->
-    <header class="h-14 border-b border-[#2e3446] bg-[#1a1c23]/80 backdrop-blur px-4 flex items-center justify-between shrink-0">
+  <main class="flex-1 flex flex-col h-full overflow-hidden">
+    <!-- Top Minimal Navbar -->
+    <header class="h-14 border-b px-4 flex items-center justify-between shrink-0" style="border-color: var(--border-subtle)">
       <div class="flex items-center gap-3">
-        <button id="open-sidebar-btn" class="md:hidden text-slate-400 hover:text-white p-1">
-          <i class="fa-solid fa-bars text-lg"></i>
+        <button id="open-sidebar-btn" class="md:hidden text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-bars text-sm"></i>
         </button>
-        <div>
-          <h2 id="chat-title" class="font-medium text-sm text-slate-200 truncate max-w-[200px] sm:max-w-md">New Chat</h2>
-          <span id="chat-meta" class="text-[10px] text-slate-500 font-mono">Ari-LLM 1.5B (Active)</span>
+        
+        <!-- Clean Model Selector -->
+        <div class="relative">
+          <select id="model-select" class="bg-transparent text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none" style="border-color: var(--border-subtle)">
+            <option value="ari-assistant" selected>Ari 1.5B (Assistant)</option>
+            <option value="qwen3.5:4b">Qwen 3.5 4B</option>
+            <option value="ari-rewritebot">Ari RewriteBot 135M</option>
+          </select>
+          <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
+            <i class="fa-solid fa-chevron-down"></i>
+          </div>
         </div>
+
+        <span id="chat-title" class="text-xs text-zinc-400 truncate max-w-[200px] hidden sm:inline">New Chat</span>
+        <span id="chat-meta" class="hidden"></span>
       </div>
 
-      <!-- Feature Controls & Engine Health -->
+      <!-- Right Action Controls -->
       <div class="flex items-center gap-2">
-        <!-- Web Search Toggle -->
-        <button id="toggle-search-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[#2e3446] bg-[#222530] text-slate-400 hover:text-slate-200 transition-all cursor-pointer">
-          <i class="fa-solid fa-globe"></i>
-          <span class="hidden sm:inline">Web Search</span>
-          <span id="search-indicator" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-        </button>
+        <!-- Hidden legacy hooks to maintain JS compatibility -->
+        <div id="engine-badge" class="hidden"></div>
+        <button id="toggle-search-btn" class="hidden"></button>
+        <button id="toggle-reasoning-btn" class="hidden"></button>
+        <span id="search-indicator" class="hidden"></span>
+        <span id="reasoning-indicator" class="hidden"></span>
 
-        <!-- Deep Reasoning Toggle -->
-        <button id="toggle-reasoning-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[#2e3446] bg-[#222530] text-slate-400 hover:text-slate-200 transition-all cursor-pointer">
-          <i class="fa-solid fa-brain"></i>
-          <span class="hidden sm:inline">Reasoning</span>
-          <span id="reasoning-indicator" class="w-1.5 h-1.5 rounded-full bg-slate-500"></span>
-        </button>
-
-        <!-- Health Badge -->
-        <div id="engine-badge" class="hidden sm:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
-          <i class="fa-solid fa-circle text-[6px]"></i>
-          <span>Ollama Ready</span>
-        </div>
-
-        <!-- Theme Toggle Button -->
-        <button id="theme-toggle-btn" title="Toggle Dark / Light Mode" class="flex items-center justify-center w-8 h-8 rounded-lg border border-[#2e3446] bg-[#222530] text-slate-300 hover:text-indigo-400 transition-all cursor-pointer">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle-btn" title="Toggle Theme" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-400 hover:text-current transition-colors" style="border-color: var(--border-subtle)">
           <i id="theme-icon" class="fa-solid fa-moon text-xs"></i>
         </button>
       </div>
     </header>
 
     <!-- Chat Messages Scroll Area -->
-    <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+    <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-8 space-y-6">
       <!-- Welcome Hero (shown when no messages exist) -->
-      <div id="welcome-hero" class="max-w-2xl mx-auto text-center py-12 px-4 space-y-6">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-xl shadow-indigo-500/25">
-          <i class="fa-solid fa-sparkles text-white text-2xl"></i>
+      <div id="welcome-hero" class="max-w-xl mx-auto text-center py-16 px-4 space-y-6">
+        <div class="w-12 h-12 mx-auto flex items-center justify-center text-current mb-2">
+          <svg viewBox="0 0 64 64" fill="none" class="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+            <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+          </svg>
         </div>
         <div>
-          <h2 class="text-2xl font-bold text-white tracking-tight">How can Ari help you today?</h2>
-          <p class="text-sm text-slate-400 mt-1.5">
-            Your personal, offline, intelligence engine equipped with cross-session memory, deep reasoning, and live web search.
+          <h2 class="text-xl font-medium tracking-tight">What would you like to explore?</h2>
+          <p class="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+            Private, offline intelligence powered by your local Ari engine with memory and web retrieval.
           </p>
         </div>
 
-        <!-- Suggestion Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-4">
-          <button class="suggestion-card p-3.5 rounded-xl bg-[#1e2230] border border-[#2e3446] hover:border-indigo-500/60 hover:bg-[#252a3b] transition-all group" data-prompt="Write a clean Python function to check whether two strings are anagrams of each other.">
-            <div class="flex items-center gap-2 text-indigo-400 text-xs font-semibold mb-1">
-              <i class="fa-solid fa-code"></i> Python Engineering
-            </div>
-            <p class="text-xs text-slate-300">Write an optimal anagram checker with edge case tests</p>
+        <!-- Refined Minimal Suggestion Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
+          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="Write a clean Python function to check whether two strings are anagrams of each other.">
+            <div class="text-xs font-medium mb-0.5">Python Engineering</div>
+            <p class="text-[11px] text-zinc-400">Optimal anagram checker with edge cases</p>
           </button>
 
-          <button class="suggestion-card p-3.5 rounded-xl bg-[#1e2230] border border-[#2e3446] hover:border-indigo-500/60 hover:bg-[#252a3b] transition-all group" data-prompt="If you have 3 apples and you take away 2, how many apples do you have?">
-            <div class="flex items-center gap-2 text-violet-400 text-xs font-semibold mb-1">
-              <i class="fa-solid fa-lightbulb"></i> Logic & Reasoning
-            </div>
-            <p class="text-xs text-slate-300">Solve the classic riddle step-by-step</p>
+          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="If you have 3 apples and you take away 2, how many apples do you have?">
+            <div class="text-xs font-medium mb-0.5">Logic & Reasoning</div>
+            <p class="text-[11px] text-zinc-400">Step-by-step classic riddle solution</p>
           </button>
 
-          <button class="suggestion-card p-3.5 rounded-xl bg-[#1e2230] border border-[#2e3446] hover:border-indigo-500/60 hover:bg-[#252a3b] transition-all group" data-prompt="What are the latest breakthrough updates in artificial intelligence today?" data-search="true">
-            <div class="flex items-center gap-2 text-cyan-400 text-xs font-semibold mb-1">
-              <i class="fa-solid fa-globe"></i> Live Web Search
-            </div>
-            <p class="text-xs text-slate-300">Fetch real-time AI news and cite live sources</p>
+          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="What are the latest breakthrough updates in artificial intelligence today?" data-search="true">
+            <div class="text-xs font-medium mb-0.5">Live Web Search</div>
+            <p class="text-[11px] text-zinc-400">Real-time news with cited web sources</p>
           </button>
 
-          <button class="suggestion-card p-3.5 rounded-xl bg-[#1e2230] border border-[#2e3446] hover:border-indigo-500/60 hover:bg-[#252a3b] transition-all group" data-prompt="My name is Alex, I build AI systems in Python, and I prefer concise responses. Remember this!">
-            <div class="flex items-center gap-2 text-emerald-400 text-xs font-semibold mb-1">
-              <i class="fa-solid fa-brain"></i> Memory & Personalization
-            </div>
-            <p class="text-xs text-slate-300">Teach Ari your profile and preferences permanently</p>
+          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="My name is Alex, I build AI systems in Python, and I prefer concise responses. Remember this!">
+            <div class="text-xs font-medium mb-0.5">Persistent Memory</div>
+            <p class="text-[11px] text-zinc-400">Teach Ari your profile and preferences</p>
           </button>
         </div>
       </div>
@@ -218,25 +187,27 @@
     </div>
 
     <!-- Message Input Dock -->
-    <div class="p-4 bg-[#1a1c23]/90 border-t border-[#2e3446] shrink-0">
-      <div class="max-w-3xl mx-auto relative">
-        <form id="chat-form" class="relative bg-[#222530] border border-[#2e3446] rounded-2xl p-2.5 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/50 shadow-lg shadow-black/40 transition-all">
+    <div class="p-4 border-t shrink-0" style="border-color: var(--border-subtle)">
+      <div class="max-w-3xl mx-auto">
+        <form id="chat-form" class="rounded-xl p-3 border shadow-sm transition-all" style="border-color: var(--border-subtle)">
           <textarea
             id="message-input"
             rows="1"
-            placeholder="Message Ari-LLM 1.5B... (Shift+Enter for newline)"
-            class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 resize-none outline-none max-h-36 px-2 py-1 select-text"
+            placeholder="Ask Ari anything..."
+            class="w-full bg-transparent text-sm resize-none outline-none max-h-36 px-1 py-1 select-text"
           ></textarea>
 
-          <div class="flex items-center justify-between pt-2 px-1">
-            <div class="flex items-center gap-2">
-              <button type="button" id="btn-quick-search" class="text-xs px-2 py-1 rounded-md bg-[#181a22] text-slate-400 hover:text-cyan-400 border border-[#2e3446] transition-colors flex items-center gap-1">
+          <div class="flex items-center justify-between pt-2.5 px-0.5 border-t mt-1" style="border-color: var(--border-subtle)">
+            <!-- Understated Action Controls -->
+            <div class="flex items-center gap-1.5">
+              <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
                 <i class="fa-solid fa-globe text-[11px]"></i>
-                <span id="quick-search-label">Web: Off</span>
+                <span id="quick-search-label" class="text-[11px]">Search</span>
               </button>
-              <button type="button" id="btn-quick-reason" class="text-xs px-2 py-1 rounded-md bg-[#181a22] text-slate-400 hover:text-indigo-400 border border-[#2e3446] transition-colors flex items-center gap-1">
+              
+              <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
                 <i class="fa-solid fa-brain text-[11px]"></i>
-                <span id="quick-reason-label">Reason: Off</span>
+                <span id="quick-reason-label" class="text-[11px]">Reason</span>
               </button>
             </div>
 
@@ -244,97 +215,91 @@
               type="submit"
               id="send-btn"
               disabled
-              class="w-8 h-8 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:hover:bg-indigo-600 text-white flex items-center justify-center transition-all cursor-pointer"
+              class="w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 card-minimal"
+              style="border-color: var(--border-subtle)"
             >
-              <i class="fa-solid fa-arrow-up text-sm"></i>
+              <i class="fa-solid fa-arrow-up text-xs"></i>
             </button>
           </div>
         </form>
-        <p class="text-[11px] text-slate-500 text-center mt-2">
-          Ari-LLM 1.5B is locally hosted. Verify critical facts and citations.
+        <p class="text-[11px] text-zinc-400 text-center mt-2">
+          Ari 1.5B is locally hosted. Verify critical information.
         </p>
       </div>
     </div>
   </main>
 
   <!-- Auth Modal (Registration & Login) -->
-  <div id="auth-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#1a1c23] border border-[#2e3446] rounded-2xl w-full max-w-md p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95">
+  <div id="auth-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="card-minimal rounded-xl w-full max-w-sm p-6 shadow-xl space-y-5 animate-in fade-in zoom-in-95">
       <div class="text-center space-y-1">
-        <div class="w-12 h-12 mx-auto rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 mb-2">
-          <i class="fa-solid fa-lock text-white text-lg"></i>
+        <div class="w-8 h-8 mx-auto flex items-center justify-center text-current mb-2">
+          <svg viewBox="0 0 64 64" fill="none" class="w-8 h-8" xmlns="http://www.w3.org/2000/svg">
+            <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+            <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+          </svg>
         </div>
-        <h3 id="auth-modal-title" class="text-lg font-bold text-white">Welcome to Ari Chat</h3>
-        <p class="text-xs text-slate-400">Sign in or register to access personal memory & chat sessions.</p>
+        <h3 id="auth-modal-title" class="text-base font-semibold tracking-tight">Sign in to Ari</h3>
+        <p class="text-xs text-zinc-400">Access your discussions and cross-session memory.</p>
       </div>
 
       <!-- Tab Switcher -->
-      <div class="flex border-b border-[#2e3446]">
-        <button id="tab-login" class="flex-1 pb-2.5 text-xs font-semibold text-indigo-400 border-b-2 border-indigo-500">Sign In</button>
-        <button id="tab-register" class="flex-1 pb-2.5 text-xs font-semibold text-slate-400 hover:text-slate-200">Create Account</button>
+      <div class="flex border-b" style="border-color: var(--border-subtle)">
+        <button id="tab-login" class="flex-1 pb-2 text-xs font-medium border-b-2" style="border-color: var(--text-primary)">Sign In</button>
+        <button id="tab-register" class="flex-1 pb-2 text-xs font-medium text-zinc-400 hover:text-current">Create Account</button>
       </div>
 
       <!-- Auth Form -->
-      <form id="auth-form" class="space-y-3.5">
+      <form id="auth-form" class="space-y-3">
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Username</label>
-          <input id="auth-username" type="text" required placeholder="e.g. alex" class="w-full bg-[#131418] border border-[#2e3446] rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Username</label>
+          <input id="auth-username" type="text" required placeholder="Username" class="w-full bg-transparent border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
         </div>
 
         <div id="auth-email-group" class="hidden">
-          <label class="block text-xs font-medium text-slate-300 mb-1">Email</label>
-          <input id="auth-email" type="email" placeholder="alex@example.com" class="w-full bg-[#131418] border border-[#2e3446] rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Email</label>
+          <input id="auth-email" type="email" placeholder="alex@example.com" class="w-full bg-transparent border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-slate-300 mb-1">Password</label>
-          <input id="auth-password" type="password" required placeholder="••••••••" class="w-full bg-[#131418] border border-[#2e3446] rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <label class="block text-xs font-medium text-zinc-400 mb-1">Password</label>
+          <input id="auth-password" type="password" required placeholder="••••••••" class="w-full bg-transparent border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
         </div>
 
-        <div id="auth-error" class="text-xs text-rose-400 hidden bg-rose-500/10 border border-rose-500/20 p-2 rounded-lg"></div>
+        <div id="auth-error" class="text-xs text-rose-500 hidden p-2 rounded border border-rose-500/20"></div>
 
-        <button type="submit" id="auth-submit-btn" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors shadow-md shadow-indigo-600/20">
+        <button type="submit" id="auth-submit-btn" class="w-full py-2 rounded-lg text-xs font-medium card-minimal">
           Sign In
         </button>
 
-        <div class="relative py-2 text-center">
-          <div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[#2e3446]"></div></div>
-          <span class="relative bg-[#1a1c23] px-2 text-[10px] text-slate-500 uppercase tracking-wider">or</span>
-        </div>
-
-        <button type="button" id="guest-btn" class="w-full py-2.5 rounded-xl bg-[#222530] hover:bg-[#2b2f3d] border border-[#2e3446] text-slate-200 font-medium text-xs transition-colors">
-          <i class="fa-solid fa-user-astronaut mr-1 text-indigo-400"></i> Instant Guest Demo
+        <button type="button" id="guest-btn" class="w-full py-2 rounded-lg text-xs text-zinc-400 hover:text-current border transition-colors" style="border-color: var(--border-subtle)">
+          Continue as Guest
         </button>
       </form>
     </div>
   </div>
 
   <!-- Persistent Memory Modal -->
-  <div id="memory-modal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-[#1a1c23] border border-[#2e3446] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
-      <div class="flex items-center justify-between border-b border-[#2e3446] pb-3">
-        <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-            <i class="fa-solid fa-database text-sm"></i>
-          </div>
-          <div>
-            <h3 class="text-sm font-bold text-white">Ari Long-Term Memory</h3>
-            <p class="text-[11px] text-slate-400">Personal facts and preferences Ari remembers across all sessions</p>
-          </div>
+  <div id="memory-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
+        <div>
+          <h3 class="text-sm font-semibold tracking-tight">Long-Term Memory</h3>
+          <p class="text-[11px] text-zinc-400">Stored facts and preferences injected into Ari's context</p>
         </div>
-        <button id="close-memory-modal-btn" class="text-slate-400 hover:text-white p-1">
-          <i class="fa-solid fa-xmark"></i>
+        <button id="close-memory-modal-btn" class="text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
 
       <!-- Add New Memory -->
-      <form id="add-memory-form" class="space-y-2 bg-[#131418] p-3 rounded-xl border border-[#2e3446]">
+      <form id="add-memory-form" class="space-y-2 p-2.5 rounded-lg border" style="border-color: var(--border-subtle)">
         <div class="grid grid-cols-2 gap-2">
-          <input id="new-mem-key" type="text" placeholder="Attribute (e.g. Name, Coding Style)" required class="bg-[#222530] border border-[#2e3446] rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
-          <input id="new-mem-val" type="text" placeholder="Value (e.g. Alex, Prefers Python)" required class="bg-[#222530] border border-[#2e3446] rounded-lg px-2.5 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+          <input id="new-mem-key" type="text" placeholder="Attribute (e.g. Name)" required class="bg-transparent border rounded-md px-2.5 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
+          <input id="new-mem-val" type="text" placeholder="Value (e.g. Alex)" required class="bg-transparent border rounded-md px-2.5 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
         </div>
-        <button type="submit" class="w-full py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors flex items-center justify-center gap-1">
-          <i class="fa-solid fa-plus text-[10px]"></i> Store New Memory
+        <button type="submit" class="w-full py-1.5 rounded-md text-xs font-medium card-minimal">
+          Store Memory
         </button>
       </form>
 
@@ -343,9 +308,9 @@
         <!-- Rendered dynamically -->
       </div>
 
-      <div class="pt-2 border-t border-[#2e3446] flex items-center justify-between text-xs">
-        <button id="clear-all-memories-btn" class="text-rose-400 hover:text-rose-300">Clear All Memories</button>
-        <span class="text-slate-500 text-[11px]">Memories are injected into Ari's system prompt</span>
+      <div class="pt-2 border-t flex items-center justify-between text-xs" style="border-color: var(--border-subtle)">
+        <button id="clear-all-memories-btn" class="text-rose-500 hover:underline">Clear All</button>
+        <span class="text-zinc-400 text-[11px]">Persistent across chats</span>
       </div>
     </div>
   </div>

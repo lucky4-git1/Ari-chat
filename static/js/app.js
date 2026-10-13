@@ -295,54 +295,74 @@ function handleLogout() {
 }
 
 /**
- * Health & Engine Check
+ * Health & Dynamic Model List
  */
 async function checkEngineHealth() {
   try {
     const health = await API.getHealth();
-    if (health.ollama && health.ollama.online) {
-      DOM.engineBadge.innerHTML = `<i class="fa-solid fa-circle text-[6px]"></i><span>Ari Online (${health.ollama.models.length} models)</span>`;
-      DOM.engineBadge.className = "hidden sm:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono";
-    } else {
-      DOM.engineBadge.innerHTML = `<i class="fa-solid fa-circle text-[6px]"></i><span>Ollama Offline</span>`;
-      DOM.engineBadge.className = "hidden sm:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono";
+    if (health.ollama && health.ollama.models && health.ollama.models.length > 0) {
+      populateModelDropdown(health.ollama.models);
     }
-  } catch {
-    DOM.engineBadge.innerHTML = `<i class="fa-solid fa-circle text-[6px]"></i><span>Server Offline</span>`;
-    DOM.engineBadge.className = "hidden sm:flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-mono";
+  } catch (err) {
+    console.error("Health check error:", err);
+  }
+}
+
+function populateModelDropdown(models) {
+  if (!DOM.modelSelect) return;
+  const currentVal = DOM.modelSelect.value;
+  DOM.modelSelect.innerHTML = "";
+  models.forEach((m) => {
+    const opt = document.createElement("option");
+    const raw = m.split(":")[0];
+    opt.value = raw;
+    if (raw.includes("ari-assistant")) {
+      opt.textContent = "Ari 1.5B (Default)";
+      if (!currentVal) opt.selected = true;
+    } else if (raw.includes("qwen")) {
+      opt.textContent = "Qwen 3.5 4B";
+    } else if (raw.includes("rewrite")) {
+      opt.textContent = "Ari RewriteBot 135M";
+    } else {
+      opt.textContent = raw;
+    }
+    DOM.modelSelect.appendChild(opt);
+  });
+  if (currentVal && Array.from(DOM.modelSelect.options).some(o => o.value === currentVal)) {
+    DOM.modelSelect.value = currentVal;
   }
 }
 
 /**
- * Toggle Handlers
+ * Toggle Handlers (Minimalist)
  */
 function toggleWebSearch() {
   state.webSearch = !state.webSearch;
-  if (state.webSearch) {
-    DOM.searchIndicator.className = "w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse";
-    DOM.toggleSearchBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-cyan-500/40 bg-cyan-500/10 text-cyan-300 transition-all cursor-pointer";
-    DOM.btnQuickSearch.className = "text-xs px-2 py-1 rounded-md bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 transition-colors flex items-center gap-1";
-    DOM.quickSearchLabel.textContent = "Web: ON";
-  } else {
-    DOM.searchIndicator.className = "w-1.5 h-1.5 rounded-full bg-slate-500";
-    DOM.toggleSearchBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[#2e3446] bg-[#222530] text-slate-400 hover:text-slate-200 transition-all cursor-pointer";
-    DOM.btnQuickSearch.className = "text-xs px-2 py-1 rounded-md bg-[#181a22] text-slate-400 hover:text-cyan-400 border border-[#2e3446] transition-colors flex items-center gap-1";
-    DOM.quickSearchLabel.textContent = "Web: Off";
+  if (DOM.btnQuickSearch) {
+    if (state.webSearch) {
+      DOM.btnQuickSearch.style.backgroundColor = "var(--text-primary)";
+      DOM.btnQuickSearch.style.color = "var(--accent-contrast)";
+      if (DOM.quickSearchLabel) DOM.quickSearchLabel.textContent = "Web On";
+    } else {
+      DOM.btnQuickSearch.style.backgroundColor = "";
+      DOM.btnQuickSearch.style.color = "";
+      if (DOM.quickSearchLabel) DOM.quickSearchLabel.textContent = "Search";
+    }
   }
 }
 
 function toggleReasoning() {
   state.reasoningMode = !state.reasoningMode;
-  if (state.reasoningMode) {
-    DOM.reasoningIndicator.className = "w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse";
-    DOM.toggleReasoningBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-indigo-500/40 bg-indigo-500/10 text-indigo-300 transition-all cursor-pointer";
-    DOM.btnQuickReason.className = "text-xs px-2 py-1 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 transition-colors flex items-center gap-1";
-    DOM.quickReasonLabel.textContent = "Reason: ON";
-  } else {
-    DOM.reasoningIndicator.className = "w-1.5 h-1.5 rounded-full bg-slate-500";
-    DOM.toggleReasoningBtn.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-[#2e3446] bg-[#222530] text-slate-400 hover:text-slate-200 transition-all cursor-pointer";
-    DOM.btnQuickReason.className = "text-xs px-2 py-1 rounded-md bg-[#181a22] text-slate-400 hover:text-indigo-400 border border-[#2e3446] transition-colors flex items-center gap-1";
-    DOM.quickReasonLabel.textContent = "Reason: Off";
+  if (DOM.btnQuickReason) {
+    if (state.reasoningMode) {
+      DOM.btnQuickReason.style.backgroundColor = "var(--text-primary)";
+      DOM.btnQuickReason.style.color = "var(--accent-contrast)";
+      if (DOM.quickReasonLabel) DOM.quickReasonLabel.textContent = "Reason On";
+    } else {
+      DOM.btnQuickReason.style.backgroundColor = "";
+      DOM.btnQuickReason.style.color = "";
+      if (DOM.quickReasonLabel) DOM.quickReasonLabel.textContent = "Reason";
+    }
   }
 }
 
@@ -668,20 +688,23 @@ function createAssistantPlaceholder() {
   const el = document.createElement("div");
   el.className = "flex gap-3 max-w-3xl mx-auto";
   el.innerHTML = `
-    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
-      <i class="fa-solid fa-brain text-white text-xs"></i>
+    <div class="w-6 h-6 rounded-md border flex items-center justify-center shrink-0 text-current mt-0.5" style="border-color: var(--border-subtle)">
+      <svg viewBox="0 0 64 64" fill="none" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
+        <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+        <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+      </svg>
     </div>
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 mb-1">
-        <span class="text-xs font-semibold text-slate-200">Ari-LLM 1.5B</span>
-        <span class="text-[10px] text-slate-500 font-mono">Just now</span>
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="text-xs font-semibold">Ari</span>
+        <span class="text-[10px] text-zinc-400">Just now</span>
       </div>
       <div class="sources-container hidden"></div>
       <details class="reasoning-box hidden">
-        <summary><i class="fa-solid fa-brain text-xs"></i> Thinking Process</summary>
+        <summary><i class="fa-solid fa-brain text-xs"></i> Thought process</summary>
         <div class="reasoning-text"></div>
       </details>
-      <div class="markdown-body text-sm bg-[#1c1f2a] border border-[#2e3446] rounded-2xl p-4 shadow-sm select-text">
+      <div class="markdown-body text-sm select-text pt-0.5">
         <span class="cursor-blink"></span>
       </div>
     </div>
@@ -696,7 +719,7 @@ function renderMessage(msg) {
 
   if (isUser) {
     el.innerHTML = `
-      <div class="max-w-[85%] sm:max-w-[75%] bg-[#2d3345] border border-[#3b4259] rounded-2xl px-4 py-3 text-sm text-slate-100 shadow-sm select-text">
+      <div class="msg-bubble-user max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-sm select-text">
         ${escapeHtml(msg.content)}
       </div>
     `;
@@ -710,7 +733,7 @@ function renderMessage(msg) {
               (s, i) =>
                 `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-pill" title="${escapeHtml(s.title)}">
                   <i class="fa-solid fa-link text-[10px]"></i>
-                  <span>[${i + 1}] ${escapeHtml(s.title)}</span>
+                  <span>${escapeHtml(s.title)}</span>
                 </a>`
             )
             .join("")}
@@ -722,24 +745,27 @@ function renderMessage(msg) {
     if (msg.reasoning) {
       reasoningHtml = `
         <details class="reasoning-box">
-          <summary><i class="fa-solid fa-brain text-xs"></i> Thinking Process</summary>
+          <summary><i class="fa-solid fa-brain text-xs"></i> Thought process</summary>
           <div class="reasoning-text">${escapeHtml(msg.reasoning)}</div>
         </details>
       `;
     }
 
     el.innerHTML = `
-      <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/20">
-        <i class="fa-solid fa-brain text-white text-xs"></i>
+      <div class="w-6 h-6 rounded-md border flex items-center justify-center shrink-0 text-current mt-0.5" style="border-color: var(--border-subtle)">
+        <svg viewBox="0 0 64 64" fill="none" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
+          <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+          <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+        </svg>
       </div>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-xs font-semibold text-slate-200">Ari-LLM 1.5B</span>
-          <span class="text-[10px] text-slate-500 font-mono">${formatDate(msg.created_at)}</span>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="text-xs font-semibold">Ari</span>
+          <span class="text-[10px] text-zinc-400">${formatDate(msg.created_at)}</span>
         </div>
         ${sourcesHtml}
         ${reasoningHtml}
-        <div class="markdown-body text-sm bg-[#1c1f2a] border border-[#2e3446] rounded-2xl p-4 shadow-sm select-text">
+        <div class="markdown-body text-sm select-text pt-0.5">
           ${marked.parse(msg.content || "")}
         </div>
       </div>
