@@ -95,6 +95,31 @@ main {
   transform: translateY(-1px);
 }
 
+/* Select & Dropdown Styling (Dark & Light Mode) */
+select, #model-select {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+select option, #model-select option {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  padding: 6px 10px;
+}
+
+html.dark select, html.dark #model-select,
+html.dark select option, html.dark #model-select option {
+  background-color: #17181e !important;
+  color: #f4f4f5 !important;
+}
+
+html:not(.dark) select, html:not(.dark) #model-select,
+html:not(.dark) select option, html:not(.dark) #model-select option {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+}
+
 /* Markdown Typography */
 .markdown-body {
   line-height: 1.72;
