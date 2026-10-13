@@ -70,6 +70,10 @@ def clean_response_text(text: str) -> str:
         "<p class=",
         "<span id=",
         "synthetic ingredients",
+        ">delete",
+        "ondelete",
+        "user deleted",
+        "deleted comment",
     ]
     for marker in stop_markers:
         if marker.lower() in text.lower():
@@ -83,15 +87,27 @@ def clean_response_text(text: str) -> str:
     text = re.sub(r'<(?:table|colgroup|tr|td|th|span|p|div|b|h\d)[^>]*>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'</(?:table|colgroup|tr|td|th|span|p|div|b|h\d)>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'(<br\s*/?|<\s*|/\s*>|/><end.*)$', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?:>Delete|onDelete|User deleted).*$', '', text, flags=re.IGNORECASE)
     
-    # Strip hashtag cascades (#yg#yg or #tag#tag)
+    # Strip hashtag cascades or trailing hashtags (#sriyu, #yg#yg)
     text = re.sub(r'(\#[a-zA-Z0-9_\-]{1,15}){2,}.*$', '', text)
+    text = re.sub(r'\s*\#[a-zA-Z0-9_\-]{2,20}\s*$', '', text)
     # Keep printable ASCII, newlines, and tabs
     text = re.sub(r'[^\x20-\x7E\r\n\t]+', '', text)
     # Strip any repeating loops
     pat = detect_repetition(text, threshold=3)
     if pat and pat not in ["#", "_Static", "Statics", "⏤", "<nooutput>"]:
         text = strip_repeating_suffix(text, pat)
+    
+    # Auto-fence bare HTML code so browsers highlight it instead of executing live elements
+    if "```" not in text:
+        html_match = re.search(r'<(?:nav|ul|ol|form|html|body|header|footer|section|main|div)\b', text, re.IGNORECASE)
+        if html_match:
+            start_idx = html_match.start()
+            prefix = text[:start_idx].rstrip()
+            code_part = text[start_idx:].strip()
+            text = f"{prefix}\n\n```html\n{code_part}\n```" if prefix else f"```html\n{code_part}\n```"
+
     return text.strip()
 
 async def check_ollama_health() -> Dict[str, Any]:

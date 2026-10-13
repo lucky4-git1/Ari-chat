@@ -19,14 +19,16 @@ def format_memory_context(memories: List[Memory]) -> str:
     return "\n".join(lines)
 
 def detect_and_store_memory(db: Session, user_id: int, user_message: str):
-    """Heuristic extractor to capture stated facts (e.g., 'My name is...', 'I work on...', 'Remember that...')."""
+    """Automatic extractor to capture stated facts and preferences across conversations."""
     msg = user_message.strip()
     
     patterns = [
-        (r"(?:my name is|call me|i am)\s+([A-Z][a-zA-Z0-9_\s]{1,30})", "User Name", "profile"),
-        (r"(?:i prefer|i like to use|my preferred language is)\s+([a-zA-Z0-9_\s\+\#]{2,40})", "Preference", "preference"),
-        (r"(?:i work as a|i am a|my job is)\s+([a-zA-Z0-9_\s]{3,40})", "Profession/Role", "profile"),
-        (r"(?:i am building|i work on|my project is)\s+([a-zA-Z0-9_\s]{3,50})", "Current Project", "project"),
+        (r"(?:my name is|call me|i am called|my name's|myself)\s+([a-zA-Z0-9_\s]{2,30})", "User Name", "profile"),
+        (r"(?:i prefer|i like to use|my preferred language is|i like coding in)\s+([a-zA-Z0-9_\s\+\#]{2,40})", "Preference", "preference"),
+        (r"(?:i work as an?|my profession is|my job is|i am a software|i am a)\s+([a-zA-Z0-9_\s]{3,40})", "Profession/Role", "profile"),
+        (r"(?:i am building|i work on|my project is|i'm developing)\s+([a-zA-Z0-9_\s]{3,50})", "Current Project", "project"),
+        (r"(?:i live in|i am from|my location is|my city is)\s+([a-zA-Z0-9_\s]{2,40})", "Location", "profile"),
+        (r"(?:my hobby is|i enjoy|in my free time i like to)\s+([a-zA-Z0-9_\s]{2,50})", "Interest", "interest"),
         (r"remember (?:that\s+)?(.+)", "Note", "fact")
     ]
     
@@ -52,4 +54,5 @@ def detect_and_store_memory(db: Session, user_id: int, user_message: str):
                     )
                     db.add(new_mem)
                 db.commit()
-                break
+                return {"key": key_label, "value": extracted_val}
+    return None

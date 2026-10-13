@@ -33,10 +33,25 @@ def perform_web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]
                     "url": r.get("href", ""),
                     "snippet": snippet
                 })
-        except Exception as e2:
-            logger.error(f"Fallback search also failed: {e2}")
+    except Exception as e2:
+        logger.error(f"Fallback search also failed: {e2}")
 
-    return results
+    return filter_relevant_results(results, query)
+
+def filter_relevant_results(results: List[Dict[str, str]], query: str) -> List[Dict[str, str]]:
+    """Filters out irrelevant or mismatched search collisions (e.g. random Wikipedia pages)."""
+    import re
+    stop_words = {"what", "when", "where", "which", "who", "whom", "this", "that", "with", "from", "have", "the", "how", "why", "are", "about", "for", "and", "can", "you", "tell", "make"}
+    keywords = [w.lower() for w in re.findall(r'\b[a-zA-Z0-9]{2,}\b', query) if w.lower() not in stop_words]
+    if not keywords:
+        return results
+
+    relevant = []
+    for r in results:
+        text_corpus = (r.get("title", "") + " " + r.get("snippet", "")).lower()
+        if any(k in text_corpus for k in keywords):
+            relevant.append(r)
+    return relevant if relevant else results
 
 def format_search_context(results: List[Dict[str, str]]) -> str:
     """Formats search results into a clean, concise grounding prompt for CPU efficiency."""

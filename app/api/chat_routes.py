@@ -153,7 +153,7 @@ async def send_message_stream(
     db.refresh(user_msg)
 
     # 2. Extract and store any user preferences or facts into long-term memory
-    detect_and_store_memory(db, user.id, req.content)
+    new_memory = detect_and_store_memory(db, user.id, req.content)
 
     # 3. Retrieve long-term memories
     memories = get_user_memories(db, user.id)
@@ -193,7 +193,11 @@ async def send_message_stream(
     chosen_model = req.model or conv.model or DEFAULT_MODEL
 
     async def sse_event_generator():
-        # First send web sources metadata event if available
+        # Notify client if long-term memory was learned
+        if new_memory:
+            yield f"data: {json.dumps({'type': 'memory_updated', 'memory': new_memory})}\n\n"
+
+        # Send web sources metadata event if available
         if search_sources:
             yield f"data: {json.dumps({'type': 'sources', 'sources': search_sources})}\n\n"
 

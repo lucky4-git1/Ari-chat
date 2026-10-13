@@ -592,6 +592,11 @@ async function handleSendMessage(e) {
           try {
             const data = JSON.parse(jsonStr);
 
+            // 0. Real-Time Memory Updated Notification
+            if (data.type === "memory_updated" && data.memory) {
+              showMemoryToast(data.memory);
+            }
+
             // 1. Web Sources
             if (data.type === "sources" && data.sources) {
               sourcesContainer.classList.remove("hidden");
@@ -600,7 +605,7 @@ async function handleSendMessage(e) {
                   (s, i) =>
                     `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-pill" title="${escapeHtml(s.title)}">
                       <i class="fa-solid fa-link text-[10px]"></i>
-                      <span>[${i + 1}] ${escapeHtml(s.title)}</span>
+                      <span>${escapeHtml(s.title)}</span>
                     </a>`
                 )
                 .join("");
