@@ -26,8 +26,28 @@ def get_engine_executable() -> Optional[Path]:
     exe_path = BIN_DIR / exe_name
     return exe_path if exe_path.exists() else None
 
+def list_available_models() -> List[str]:
+    """Scans models directory for all installed GGUF models."""
+    models = []
+    if MODELS_DIR.exists():
+        for f in sorted(MODELS_DIR.glob("*.gguf")):
+            clean_name = f.stem.replace("_", "-")
+            models.append(clean_name)
+    if not models:
+        models = ["ari-assistant:1.5b"]
+    return models
+
 def get_model_file() -> Optional[Path]:
-    """Locates the GGUF model file."""
+    """Locates the GGUF model file, preferring 3B if available."""
+    if MODELS_DIR.exists():
+        # Check for 3b model first
+        for f in MODELS_DIR.glob("*.gguf"):
+            if "3b" in f.name.lower():
+                return f
+        # Otherwise any gguf
+        for f in MODELS_DIR.glob("*.gguf"):
+            return f
+            
     if DEFAULT_GGUF_PATH.exists():
         return DEFAULT_GGUF_PATH
     
@@ -35,11 +55,6 @@ def get_model_file() -> Optional[Path]:
     alt_path = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
     if alt_path.exists():
         return alt_path
-    
-    # Check any .gguf in models directory
-    if MODELS_DIR.exists():
-        for f in MODELS_DIR.glob("*.gguf"):
-            return f
             
     return None
 
