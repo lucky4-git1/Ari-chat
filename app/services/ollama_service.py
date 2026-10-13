@@ -40,14 +40,40 @@ def clean_response_text(text: str) -> str:
     """Bulletproof post-processing to clean metadata, non-ASCII garbage, stop tokens, and looping artifacts."""
     if not text:
         return ""
-    # Cut off at known stop tokens or metadata markers
-    for marker in ["_Static", "Statics", "⏤", "<nooutput>", "<|im_end|>", "<|im_start|>", "<|endoftext|>"]:
-        if marker in text:
-            text = text.split(marker)[0]
-    # Keep printable ASCII, newlines, and tabs
-    text = re.sub(r'[^\x20-\x7E\r\n\t]+', '', text)
+    # Strip opening synthetic wrappers if present
+    text = re.sub(r'^(<response>|<answer>)\s*', '', text, flags=re.IGNORECASE)
+
+    # Cut off at known stop tokens, turn markers, or metadata delimiters
+    stop_markers = [
+        "</response>",
+        "</answer>",
+        "<endofconversation>",
+        "<startchat>",
+        "<|im_end|>",
+        "<|im_start|>",
+        "<|endoftext|>",
+        "_Static",
+        "Statics",
+        "⏤",
+        "<nooutput>",
+        "//[",
+        "[iVar",
+        "Intialized:",
+        "Answered.",
+        "<br/>",
+        "<br>",
+    ]
+    for marker in stop_markers:
+        if marker.lower() in text.lower():
+            idx = text.lower().find(marker.lower())
+            text = text[:idx]
+
+    # Remove trailing unclosed tags or dangling fragments like <br, </, />
+    text = re.sub(r'(<br\s*/?|<\s*|/\s*>|/><end.*)$', '', text, flags=re.IGNORECASE)
     # Strip hashtag cascades (#yg#yg or #tag#tag)
     text = re.sub(r'(\#[a-zA-Z0-9_\-]{1,15}){2,}.*$', '', text)
+    # Keep printable ASCII, newlines, and tabs
+    text = re.sub(r'[^\x20-\x7E\r\n\t]+', '', text)
     # Strip any repeating loops
     pat = detect_repetition(text, threshold=3)
     if pat and pat not in ["#", "_Static", "Statics", "⏤", "<nooutput>"]:
@@ -109,6 +135,16 @@ async def stream_chat_completion(
                 "<|endoftext|>",
                 "<|object_ref_start|>",
                 "<|box_start|>",
+                "</response>",
+                "</answer>",
+                "<endofconversation>",
+                "<startchat>",
+                "//[",
+                "[iVar",
+                "<br/>",
+                "<br>",
+                "Intialized:",
+                "Answered.",
                 "_Static",
                 "Statics",
                 "⏤",
@@ -142,10 +178,15 @@ async def stream_chat_completion(
                             clean_tok = re.sub(r'[^\x20-\x7E\r\n\t]+', '', content)
                             accumulated += clean_tok
 
-                            # Check for stop token leakage
-                            for stop_tok in ["<|im_end|>", "<|im_start|>", "<|endoftext|>", "_Static", "Statics", "⏤", "<nooutput>"]:
-                                if stop_tok in accumulated:
-                                    yield json.dumps({"done": True, "token": ""}) + "\n"
+                            # Check for stop token leakage or synthetic tag generation
+                            for stop_tok in [
+                                "<|im_end|>", "<|im_start|>", "<|endoftext|>",
+                                "</response>", "</answer>", "<endofconversation>",
+                                "<startchat>", "//[", "[iVar", "_Static", "Statics", "⏤",
+                                "<nooutput>", "Intialized:", "Answered."
+                            ]:
+                                if stop_tok.lower() in accumulated.lower():
+                                    yield json.dumps({"done": True, "token": "", "circuit_break": True}) + "\n"
                                     return
 
                             # Circuit breaker: detect token loops (#yg, Intialized., hashtags)

@@ -883,19 +883,53 @@ function formatDate(isoStr) {
 }
 
 function stripClientRepeats(text) {
-  if (!text || text.length < 6) return text;
-  for (let l = 2; l <= 35; l++) {
-    if (text.length >= l * 3) {
-      const pat = text.slice(-l);
-      if (text.endsWith(pat.repeat(3))) {
-        let cleaned = text;
-        while (cleaned.endsWith(pat)) {
-          cleaned = cleaned.slice(0, -l);
+  if (!text) return "";
+  // Strip opening synthetic wrappers
+  let cleaned = text.replace(/^<(?:response|answer)>\s*/i, "");
+
+  // Cut at known stop tokens or synthetic markers
+  const stopMarkers = [
+    "</response>",
+    "</answer>",
+    "<endofconversation>",
+    "<startchat>",
+    "<|im_end|>",
+    "<|im_start|>",
+    "<|endoftext|>",
+    "_Static",
+    "Statics",
+    "⏤",
+    "<nooutput>",
+    "//[",
+    "[iVar",
+    "Intialized:",
+    "Answered.",
+    "<br/>"
+  ];
+  for (const marker of stopMarkers) {
+    const idx = cleaned.toLowerCase().indexOf(marker.toLowerCase());
+    if (idx !== -1) {
+      cleaned = cleaned.slice(0, idx);
+    }
+  }
+
+  // Remove trailing unclosed tags
+  cleaned = cleaned.replace(/(?:<br\s*\/?>?|<\s*|\/\s*>|\/><end.*)$/i, "");
+
+  // Strip cyclical loops
+  if (cleaned.length >= 6) {
+    for (let l = 2; l <= 35; l++) {
+      if (cleaned.length >= l * 3) {
+        const pat = cleaned.slice(-l);
+        if (cleaned.endsWith(pat.repeat(3))) {
+          while (cleaned.endsWith(pat)) {
+            cleaned = cleaned.slice(0, -l);
+          }
+          break;
         }
-        return cleaned.trim();
       }
     }
   }
-  return text;
+  return cleaned.trim();
 }
 
