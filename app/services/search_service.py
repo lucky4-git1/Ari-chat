@@ -33,8 +33,8 @@ def perform_web_search(query: str, max_results: int = 3) -> List[Dict[str, str]]
                     "url": r.get("href", ""),
                     "snippet": snippet
                 })
-    except Exception as e2:
-        logger.error(f"Fallback search also failed: {e2}")
+        except Exception as e2:
+            logger.error(f"Fallback search also failed: {e2}")
 
     return filter_relevant_results(results, query)
 

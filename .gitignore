@@ -57,3 +57,10 @@ htmlcov/
 *~
 .DS_Store
 Thumbs.db
+
+# Standalone Engine Binaries and Models
+bin/
+models/
+*.gguf
+data/*.log
+*.log

@@ -1,8 +1,8 @@
 @echo off
-title Ari Chat - Powered by Ari-LLM 1.5B
+title Ari Chat - Standalone AI Companion
 cls
 echo =======================================================================
-echo          Ari Chat: Production ChatGPT-Style Web Platform
+echo          Ari Chat: Standalone AI Companion (Zero-Setup)
 echo                    Powered by Ari-LLM 1.5B
 echo =======================================================================
 echo.
@@ -13,6 +13,7 @@ echo [1/3] Checking Python installation...
 where python >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Python is not installed or not in your PATH.
+    echo Please install Python 3.10+ from python.org and try again.
     pause
     exit /b 1
 )
@@ -24,21 +25,18 @@ if %ERRORLEVEL% neq 0 (
     pip install -r requirements.txt
 )
 
-echo [3/3] Checking Ollama service status...
-curl -s http://localhost:11434/api/tags >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo [WARNING] Ollama does not seem to be running on http://localhost:11434.
-    echo Please make sure Ollama is started with model 'ari-assistant'.
-    echo Continuing anyway...
-)
+echo [3/3] Verifying standalone engine and model...
+python setup_engine.py
 
 echo.
 echo =======================================================================
-echo   Server starting on: http://localhost:8000
-echo   Open your browser and navigate to: http://localhost:8000
-echo   Press Ctrl+C to stop the server at any time.
+echo   Opening Ari Chat in your default browser...
+echo   URL: http://localhost:8000
+echo   Press Ctrl+C in this window to stop the application.
 echo =======================================================================
 echo.
 
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+start "" "http://localhost:8000"
+
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 pause

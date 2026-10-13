@@ -1,38 +1,42 @@
 #!/usr/bin/env bash
-# =======================================================================
-#          Ari Chat: Production ChatGPT-Style Web Platform
-#                    Powered by Ari-LLM 1.5B
-# =======================================================================
-
 set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
 echo "======================================================================="
-echo "         Ari Chat: Production ChatGPT-Style Web Platform"
+echo "         Ari Chat: Standalone AI Companion (Zero-Setup)"
 echo "                   Powered by Ari-LLM 1.5B"
 echo "======================================================================="
+echo ""
 
-# Check Python
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "$DIR"
+
+echo "[1/3] Checking Python installation..."
 if ! command -v python3 &> /dev/null; then
-    echo "[ERROR] python3 could not be found. Please install Python 3.9+."
+    echo "[ERROR] python3 could not be found. Please install Python 3.10+."
     exit 1
 fi
 
-# Check / Install Dependencies
-echo "[1/3] Checking dependencies..."
-python3 -c "import fastapi, uvicorn, sqlalchemy, httpx, ddgs" &> /dev/null || {
-    echo "Installing requirements..."
+echo "[2/3] Checking dependencies..."
+python3 -c "import fastapi, uvicorn, sqlalchemy, httpx, ddgs" 2>/dev/null || {
+    echo "Installing required packages from requirements.txt..."
     pip3 install -r requirements.txt
 }
 
-# Check Ollama
-echo "[2/3] Checking Ollama service..."
-curl -s http://localhost:11434/api/tags > /dev/null 2>&1 || {
-    echo "[WARNING] Ollama is not detected at http://localhost:11434."
-    echo "Make sure Ollama is running: 'ollama run ari-assistant'"
-}
+echo "[3/3] Verifying standalone engine and model..."
+python3 setup_engine.py
 
-echo "[3/3] Starting Ari Chat Server on http://localhost:8000 ..."
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+echo ""
+echo "======================================================================="
+echo "  Ari Chat running on: http://localhost:8000"
+echo "  Press Ctrl+C to stop the application."
+echo "======================================================================="
+echo ""
+
+# Try opening default browser
+if command -v xdg-open &> /dev/null; then
+    xdg-open "http://localhost:8000" &
+elif command -v open &> /dev/null; then
+    open "http://localhost:8000" &
+fi
+
+python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000

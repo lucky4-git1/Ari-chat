@@ -23,9 +23,12 @@ def detect_and_store_memory(db: Session, user_id: int, user_message: str):
     msg = user_message.strip()
     
     patterns = [
-        (r"(?:my name is|call me|i am called|my name's|myself)\s+([a-zA-Z0-9_\s]{2,30})", "User Name", "profile"),
+        (r"(?:my name is|call me|i am called|my name's|myself)\s+([A-Za-z0-9_]+(?:\s+(?!and\b|i\b|who\b|im\b|i'm\b)[A-Za-z0-9_]+)?)", "User Name", "profile"),
+        (r"^(?:i am|i'm)\s+([A-Z][a-zA-Z]{1,20})(?:$|[,\.\!\?])", "User Name", "profile"),
+        (r"(?:my favorite|i love|i really like)\s+([a-zA-Z0-9_\s]{2,40})", "Favorite", "preference"),
         (r"(?:i prefer|i like to use|my preferred language is|i like coding in)\s+([a-zA-Z0-9_\s\+\#]{2,40})", "Preference", "preference"),
-        (r"(?:i work as an?|my profession is|my job is|i am a software|i am a)\s+([a-zA-Z0-9_\s]{3,40})", "Profession/Role", "profile"),
+        (r"(?:i work as an?|my profession is|my job is|i am a software engineer|i am a developer)\s+([a-zA-Z0-9_\s]{3,40})", "Profession/Role", "profile"),
+        (r"(?:my goal is|i want to learn|i want to build)\s+([a-zA-Z0-9_\s]{3,50})", "Goal", "profile"),
         (r"(?:i am building|i work on|my project is|i'm developing)\s+([a-zA-Z0-9_\s]{3,50})", "Current Project", "project"),
         (r"(?:i live in|i am from|my location is|my city is)\s+([a-zA-Z0-9_\s]{2,40})", "Location", "profile"),
         (r"(?:my hobby is|i enjoy|in my free time i like to)\s+([a-zA-Z0-9_\s]{2,50})", "Interest", "interest"),

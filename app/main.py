@@ -10,7 +10,7 @@ from app.db.database import init_db
 from app.api.auth_routes import router as auth_router
 from app.api.chat_routes import router as chat_router
 from app.api.memory_routes import router as memory_router
-from app.services.ollama_service import check_ollama_health
+from app.services.engine_service import check_engine_health, start_standalone_engine, stop_standalone_engine
 
 app = FastAPI(
     title=PROJECT_NAME,
@@ -27,10 +27,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Database on startup
+# Initialize Database and auto-start engine on startup
 @app.on_event("startup")
 def on_startup():
     init_db()
+    # Auto-start standalone engine if files are present and no engine is active
+    start_standalone_engine()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    stop_standalone_engine()
 
 # Mount API Routers
 app.include_router(auth_router)
@@ -39,12 +45,13 @@ app.include_router(memory_router)
 
 @app.get("/api/health")
 async def health_check():
-    ollama_status = await check_ollama_health()
+    engine_status = await check_engine_health()
     return {
         "status": "healthy",
         "app": PROJECT_NAME,
         "version": VERSION,
-        "ollama": ollama_status
+        "engine": engine_status,
+        "ollama": engine_status  # Backwards compatibility for UI
     }
 
 # Static assets and SPA mounting

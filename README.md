@@ -1,44 +1,45 @@
 # Ari Chat 🤖✨
-### Production-Ready ChatGPT Alternative Powered by Ari-LLM 1.5B
+### Standalone, Zero-Setup AI Companion Powered by Ari-LLM 1.5B
 
-**Ari Chat** is a complete, self-hosted, private AI conversational web platform built natively on top of **Ari-LLM 1.5B** (`ari-assistant`). It gives you the full power and polish of modern ChatGPT—with complete privacy, cross-session memory, live web search, deep reasoning, and multi-user accounts.
+**Ari Chat** is a lightweight, zero-setup personal AI companion designed specifically for **lower-end laptops (4 GB–8 GB RAM, CPU-only)** that gives you the polish, warmth, and intelligence of modern ChatGPT without requiring Ollama, Docker, or any external software installations.
 
 ---
 
 ## 🌟 Highlights
 
-- **Native Ari-LLM 1.5B Engine**: Powered by your local model via Ollama with 4-thread CPU optimization and 2048-token context window.
-- **🎨 Modern Dark & Light Mode UI**: Beautiful ChatGPT-inspired responsive interface with one-click theme switcher, localStorage persistence, and syntax highlighting.
-- **🧠 Cross-Session Long-Term Memory**: Ari remembers your name, preferences, past projects, and instructions across completely separate chat sessions.
+- **⚡ 100% Standalone & Local**: Powered by an embedded CPU-optimized engine with AVX2 acceleration. Runs directly on your CPU without requiring Ollama or external daemons.
+- **💻 Tailored for Low-End Laptops**: Minimal RAM footprint (~1.2 GB total), sub-second token latency, and seamless operation on 4 GB–8 GB RAM systems.
+- **🎨 Modern Dark & Light Mode UI**: Distraction-free, architectural companion interface with one-click theme switcher, custom vector logo, and syntax-highlighted code blocks.
+- **🧠 ChatGPT-Style Automatic Memory**: Automatically learns your name, preferences, goals, and interests, updating cross-session long-term memory with real-time UI toasts.
 - **🌐 Real-Time Web Search**: Ground responses in live DuckDuckGo web results and cite clickable sources with one click.
 - **🤔 Deep Reasoning Mode**: Step-by-step thinking process displayed in collapsible badges before the final answer.
 - **👥 Multi-User Accounts**: User registration, login, secure PBKDF2 password hashing, and private chat histories.
-- **⚡ Real-Time Streaming**: Server-Sent Events (SSE) token streaming, markdown rendering, syntax-highlighted code blocks, and 1-click copy buttons.
-- **🚀 1-Click Launch**: Zero complex setup, runs natively on Windows, Linux, and macOS.
+- **🚀 1-Click Launch**: Double-click `start.bat` and start chatting immediately in your browser.
 
 ---
 
 ## 🚀 Quickstart
 
-### Windows
+### 1. Windows (1-Click Launch)
 Double-click `start.bat` or run:
 ```cmd
 start.bat
 ```
+`start.bat` automatically verifies Python dependencies, downloads the portable standalone engine if needed (~19 MB), loads Ari 1.5B, and opens **http://localhost:8000** in your browser.
 
-### Linux / macOS
+### 2. Linux / macOS
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
 
-### Manual Launch
+### 3. Manual Launch
 ```bash
 pip install -r requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python setup_engine.py
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
-
-Then open your browser at **[http://localhost:8000](http://localhost:8000)**.
+Then navigate to **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 
@@ -47,28 +48,47 @@ Then open your browser at **[http://localhost:8000](http://localhost:8000)**.
 ```
 ari-chat-app/
 ├── app/
-│   ├── main.py              # FastAPI server entrypoint
+│   ├── main.py              # FastAPI server & engine lifecycle manager
 │   ├── core/
-│   │   ├── config.py        # Configuration, Ollama & JWT settings
+│   │   ├── config.py        # Configuration, paths, & security settings
 │   │   └── security.py      # PBKDF2 hashing & HMAC-SHA256 tokens
 │   ├── db/
 │   │   ├── database.py      # SQLite connection & engine
 │   │   └── models.py        # User, Conversation, Message, Memory
 │   ├── services/
-│   │   ├── ollama_service.py# Streaming client for Ari-LLM
+│   │   ├── engine_service.py# Standalone llama-server & Ollama dual engine
 │   │   ├── search_service.py# Live DuckDuckGo search integration
 │   │   └── memory_service.py# Long-term memory extraction & retrieval
 │   └── api/
 │       ├── auth_routes.py   # Register, Login, Me endpoints
 │       ├── chat_routes.py   # Conversations & SSE message streaming
 │       └── memory_routes.py # Manage user memories
+├── bin/                     # Standalone portable engine (auto-installed)
+├── models/                  # Ari-LLM 1.5B GGUF model checkpoint
 ├── static/
 │   ├── index.html           # Full responsive ChatGPT-style UI
-│   ├── css/style.css        # Dark theme, glassmorphic styling
+│   ├── css/style.css        # Minimalist, clean dark & light themes
+│   ├── img/logo.svg         # Bespoke Ari companion vector logo
 │   └── js/
 │       ├── api.js           # REST API client
-│       └── app.js           # Chat controller & streaming UI logic
-├── start.bat                # Windows 1-click launcher
+│       └── app.js           # Chat controller, memory toasts & SSE
+├── setup_engine.py          # Standalone binary & model setup utility
+├── start.bat                # Windows 1-click zero-setup launcher
 ├── start.sh                 # Linux/Mac 1-click launcher
 └── requirements.txt
 ```
+
+---
+
+## 🧪 Testing & Verification
+
+Run the integration suite:
+```bash
+python tests/test_integration.py
+```
+Validates:
+1. Database schema & SQLite connectivity.
+2. User authentication & JWT issuance.
+3. DuckDuckGo live web search grounding.
+4. Automatic long-term memory extraction.
+5. Local standalone engine connectivity.

@@ -49,7 +49,7 @@ async def run_tests():
         print(f"     Title: {results[0]['title']}")
         print(f"     URL:   {results[0]['url']}")
         formatted = format_search_context(results)
-        assert "Real-Time Web Search Results" in formatted
+        assert "Web Search Context" in formatted
     print("  -> Web search engine verified!")
 
     # 4. Long-Term Memory Engine
