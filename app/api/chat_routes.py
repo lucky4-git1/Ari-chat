@@ -168,8 +168,12 @@ async def send_message_stream(
 
     # 5. Build full message context for Ollama
     system_prompt = (
-        "You are Ari-LLM, an intelligent, helpful, honest, and capable AI assistant developed by Ari AI.\n"
-        "You excel in software engineering, multi-turn reasoning, concise technical explanations, and creative problem-solving."
+        "You are Ari-LLM, a helpful, honest, and highly capable AI assistant developed by Ari AI.\n\n"
+        "Guidelines:\n"
+        "- Always respond directly, naturally, and use clean Markdown formatting.\n"
+        "- Never generate raw HTML tags (such as <table>, <colgroup>, <a href=>, <span>), website scraping markers, or '[View Answer]' links.\n"
+        "- For recipes, instructions, or explanations, provide structured lists with clear Ingredients and numbered Steps.\n"
+        "- If asked for instructions regarding illicit drug synthesis (such as methamphetamine), weapons, or dangerous acts, refuse politely and offer safe educational context or harm reduction resources."
     )
     if memory_prompt_block:
         system_prompt += f"\n\n{memory_prompt_block}"
@@ -181,7 +185,10 @@ async def send_message_stream(
     # Append conversation history (up to last 10 messages for rich multi-turn context)
     prior_messages = conv.messages[-10:]
     for m in prior_messages:
-        ollama_messages.append({"role": m.role, "content": m.content})
+        # Sanitize prior assistant messages so historical scrape artifacts never poison future turns
+        content = clean_response_text(m.content) if m.role == "assistant" else m.content
+        if content:
+            ollama_messages.append({"role": m.role, "content": content})
 
     chosen_model = req.model or conv.model or DEFAULT_MODEL
 

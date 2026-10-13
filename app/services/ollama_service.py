@@ -62,14 +62,28 @@ def clean_response_text(text: str) -> str:
         "Answered.",
         "<br/>",
         "<br>",
+        "[view answer]",
+        "[\\view answer\\]",
+        "<colgroup",
+        "<table",
+        "<a href",
+        "<p class=",
+        "<span id=",
+        "synthetic ingredients",
     ]
     for marker in stop_markers:
         if marker.lower() in text.lower():
             idx = text.lower().find(marker.lower())
             text = text[:idx]
 
-    # Remove trailing unclosed tags or dangling fragments like <br, </, />
+    # Remove any dangling or leftover HTML tags & broken forum links
+    text = re.sub(r'\[\\?\[?View Answer\\?\]?\]\([^)]+\)', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\[View Answer\]', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<a\s+href=[^>]+>.*?</a>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'<(?:table|colgroup|tr|td|th|span|p|div|b|h\d)[^>]*>', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'</(?:table|colgroup|tr|td|th|span|p|div|b|h\d)>', '', text, flags=re.IGNORECASE)
     text = re.sub(r'(<br\s*/?|<\s*|/\s*>|/><end.*)$', '', text, flags=re.IGNORECASE)
+    
     # Strip hashtag cascades (#yg#yg or #tag#tag)
     text = re.sub(r'(\#[a-zA-Z0-9_\-]{1,15}){2,}.*$', '', text)
     # Keep printable ASCII, newlines, and tabs
@@ -145,6 +159,13 @@ async def stream_chat_completion(
                 "<br>",
                 "Intialized:",
                 "Answered.",
+                "[View Answer]",
+                "[view answer]",
+                "<colgroup",
+                "<table",
+                "<a href",
+                "<p class=",
+                "Synthetic Ingredients",
                 "_Static",
                 "Statics",
                 "⏤",
@@ -183,7 +204,9 @@ async def stream_chat_completion(
                                 "<|im_end|>", "<|im_start|>", "<|endoftext|>",
                                 "</response>", "</answer>", "<endofconversation>",
                                 "<startchat>", "//[", "[iVar", "_Static", "Statics", "⏤",
-                                "<nooutput>", "Intialized:", "Answered."
+                                "<nooutput>", "Intialized:", "Answered.",
+                                "[view answer]", "<colgroup", "<table", "<a href",
+                                "<p class=", "synthetic ingredients"
                             ]:
                                 if stop_tok.lower() in accumulated.lower():
                                     yield json.dumps({"done": True, "token": "", "circuit_break": True}) + "\n"
