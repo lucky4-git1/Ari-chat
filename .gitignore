@@ -64,3 +64,6 @@ models/
 *.gguf
 data/*.log
 *.log
+AriChat.exe
+release_packages/
+
