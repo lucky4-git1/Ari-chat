@@ -1,0 +1,51 @@
+FROM ./models/ari_assistant_1.5b.gguf
+
+TEMPLATE """{{ if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{ if .Prompt }}<|im_start|>user
+{{ .Prompt }}<|im_end|>
+<|im_start|>assistant
+{{ else if .Messages }}{{ range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+{{ end }}"""
+
+# ChatML Core Stops
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# Training & Synthetic Artifact Stops
+PARAMETER stop "<Task"
+PARAMETER stop "###"
+PARAMETER stop "### Input:"
+PARAMETER stop "### Response:"
+PARAMETER stop "<unk>"
+PARAMETER stop "<nooutput>"
+PARAMETER stop "<none>"
+PARAMETER stop "Intialized:"
+PARAMETER stop "Initialized:"
+
+# Agent Scratchpad Stops
+PARAMETER stop "No Output"
+PARAMETER stop "No output"
+PARAMETER stop "This task is complete"
+PARAMETER stop "No further action"
+PARAMETER stop "No additional actions"
+
+# Foreign Glyphs (Thai leakage suppression)
+PARAMETER stop "เรียน"
+PARAMETER stop "à¹€à¸£à¸µà¸¢à¸™"
+PARAMETER stop "à¸à¸¸"
+
+# Fine-Tuned QuillBot Parity Generation Parameters
+PARAMETER temperature 0.4
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER repeat_penalty 1.15
+PARAMETER repeat_last_n 64
+PARAMETER num_predict 512
+PARAMETER num_ctx 2048
+PARAMETER num_thread 4
+
+SYSTEM """You are RewriteBot (ARI-1.5B), an expert editorial paraphrasing engine. Paraphrase the entire input text with complete coverage, authentic sentence variety, and strict factual preservation. Never swap, mix, or reassign subjects, genders, or medical procedures across clauses. Output ONLY the rewritten text."""

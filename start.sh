@@ -3,7 +3,7 @@ set -e
 
 echo "======================================================================="
 echo "         Ari Chat: Standalone AI Companion (Zero-Setup)"
-echo "                   Powered by Ari-LLM 1.5B"
+echo "                   Powered by Ari-LLM 1.5B & 3B"
 echo "======================================================================="
 echo ""
 
@@ -17,26 +17,10 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 echo "[2/3] Checking dependencies..."
-python3 -c "import fastapi, uvicorn, sqlalchemy, httpx, ddgs" 2>/dev/null || {
+python3 -c "import fastapi, uvicorn, sqlalchemy, httpx, ddgs, pydantic" 2>/dev/null || {
     echo "Installing required packages from requirements.txt..."
     pip3 install -r requirements.txt
 }
 
-echo "[3/3] Verifying standalone engine and model..."
-python3 setup_engine.py
-
-echo ""
-echo "======================================================================="
-echo "  Ari Chat running on: http://localhost:8000"
-echo "  Press Ctrl+C to stop the application."
-echo "======================================================================="
-echo ""
-
-# Try opening default browser
-if command -v xdg-open &> /dev/null; then
-    xdg-open "http://localhost:8000" &
-elif command -v open &> /dev/null; then
-    open "http://localhost:8000" &
-fi
-
-python3 -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+echo "[3/3] Starting Ari Chat..."
+python3 run_app.py

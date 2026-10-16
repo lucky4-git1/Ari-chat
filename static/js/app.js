@@ -10,6 +10,7 @@ const state = {
   webSearch: false,
   reasoningMode: false,
   isGenerating: false,
+  abortController: null,
   authMode: "login" // 'login' or 'register'
 };
 
@@ -147,18 +148,38 @@ function setupEventListeners() {
   DOM.toggleReasoningBtn?.addEventListener("click", toggleReasoning);
   DOM.btnQuickReason?.addEventListener("click", toggleReasoning);
 
-  // Input Auto-Grow and Send
+  // Input Auto-Grow, Send, and Stop on Escape
   DOM.messageInput?.addEventListener("input", handleInputChange);
   DOM.messageInput?.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (!state.isGenerating && DOM.messageInput.value.trim().length > 0) {
+      if (state.isGenerating) {
+        stopGeneration();
+      } else if (DOM.messageInput.value.trim().length > 0) {
         DOM.chatForm.dispatchEvent(new Event("submit"));
       }
+    } else if (e.key === "Escape" && state.isGenerating) {
+      e.preventDefault();
+      stopGeneration();
     }
   });
 
-  DOM.chatForm?.addEventListener("submit", handleSendMessage);
+  DOM.chatForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (state.isGenerating) {
+      stopGeneration();
+    } else {
+      handleSendMessage(e);
+    }
+  });
+
+  DOM.sendBtn?.addEventListener("click", (e) => {
+    if (state.isGenerating) {
+      e.preventDefault();
+      e.stopPropagation();
+      stopGeneration();
+    }
+  });
 
   // Search Filter in Sidebar
   DOM.searchConvInput?.addEventListener("input", filterConversations);
@@ -312,22 +333,24 @@ function populateModelDropdown(models) {
   if (!DOM.modelSelect) return;
   const currentVal = DOM.modelSelect.value;
   DOM.modelSelect.innerHTML = "";
-  models.forEach((m) => {
+
+  const allowed = [
+    { id: "ari-assistant-3b", label: "Ari 3B Assistant (Recommended)" },
+    { id: "ari-assistant-1.5b", label: "Ari 1.5B Assistant (Updated)" }
+  ];
+
+  allowed.forEach((item) => {
     const opt = document.createElement("option");
-    const raw = m.split(":")[0];
-    opt.value = raw;
-    if (raw.includes("ari-assistant")) {
-      opt.textContent = "Ari 1.5B (Default)";
-      if (!currentVal) opt.selected = true;
-    } else if (raw.includes("qwen")) {
-      opt.textContent = "Qwen 3.5 4B";
-    } else if (raw.includes("rewrite")) {
-      opt.textContent = "Ari RewriteBot 135M";
-    } else {
-      opt.textContent = raw;
+    opt.value = item.id;
+    opt.textContent = item.label;
+    if (currentVal === item.id) {
+      opt.selected = true;
+    } else if (!currentVal && item.id === "ari-assistant-3b") {
+      opt.selected = true;
     }
     DOM.modelSelect.appendChild(opt);
   });
+
   if (currentVal && Array.from(DOM.modelSelect.options).some(o => o.value === currentVal)) {
     DOM.modelSelect.value = currentVal;
   }
@@ -511,16 +534,45 @@ async function handleDeleteConversation(id) {
 }
 
 /**
- * Message Handling & Streaming
+ * Message Handling & Streaming with Modern Send/Stop Control
  */
+function setGenerationState(isGenerating) {
+  state.isGenerating = isGenerating;
+  if (!DOM.sendBtn) return;
+
+  if (isGenerating) {
+    DOM.sendBtn.disabled = false;
+    DOM.sendBtn.title = "Stop generating (Esc)";
+    DOM.sendBtn.setAttribute("aria-label", "Stop generating");
+    DOM.sendBtn.classList.add("stop-active");
+    DOM.sendBtn.innerHTML = '<i class="fa-solid fa-square text-[10px]"></i>';
+  } else {
+    DOM.sendBtn.title = "Send message";
+    DOM.sendBtn.setAttribute("aria-label", "Send message");
+    DOM.sendBtn.classList.remove("stop-active");
+    DOM.sendBtn.innerHTML = '<i class="fa-solid fa-arrow-up text-xs"></i>';
+    DOM.sendBtn.disabled = DOM.messageInput.value.trim().length === 0;
+  }
+}
+
+function stopGeneration() {
+  if (state.abortController) {
+    state.abortController.abort();
+    state.abortController = null;
+  }
+  setGenerationState(false);
+}
+
 function handleInputChange() {
   DOM.messageInput.style.height = "auto";
   DOM.messageInput.style.height = `${Math.min(DOM.messageInput.scrollHeight, 140)}px`;
-  DOM.sendBtn.disabled = DOM.messageInput.value.trim().length === 0;
+  if (!state.isGenerating) {
+    DOM.sendBtn.disabled = DOM.messageInput.value.trim().length === 0;
+  }
 }
 
 async function handleSendMessage(e) {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   const text = DOM.messageInput.value.trim();
   if (!text || state.isGenerating) return;
 
@@ -532,8 +584,9 @@ async function handleSendMessage(e) {
   DOM.welcomeHero.classList.add("hidden");
   DOM.messageInput.value = "";
   DOM.messageInput.style.height = "auto";
-  DOM.sendBtn.disabled = true;
-  state.isGenerating = true;
+
+  state.abortController = new AbortController();
+  setGenerationState(true);
 
   // Render User Message
   renderMessage({ role: "user", content: text, created_at: new Date().toISOString() });
@@ -561,6 +614,7 @@ async function handleSendMessage(e) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`
       },
+      signal: state.abortController.signal,
       body: JSON.stringify({
         content: text,
         web_search: state.webSearch,
@@ -669,10 +723,18 @@ async function handleSendMessage(e) {
       }
     }
   } catch (err) {
-    bodyEl.innerHTML += `<div class="text-xs text-rose-400 mt-2 p-2 bg-rose-500/10 rounded-lg">Error: ${escapeHtml(err.message)}</div>`;
+    if (err.name === "AbortError" || err.message?.includes("aborted")) {
+      // Stopped cleanly by user
+      if (fullResponse) {
+        fullResponse = stripClientRepeats(fullResponse);
+        bodyEl.innerHTML = marked.parse(fullResponse);
+      }
+    } else {
+      bodyEl.innerHTML += `<div class="text-xs text-rose-400 mt-2 p-2 bg-rose-500/10 rounded-lg">Error: ${escapeHtml(err.message)}</div>`;
+    }
   } finally {
-    state.isGenerating = false;
-    DOM.sendBtn.disabled = DOM.messageInput.value.trim().length === 0;
+    setGenerationState(false);
+    state.abortController = null;
     // Remove any trailing cursor
     const blinker = bodyEl.querySelector(".cursor-blink");
     if (blinker) blinker.remove();
@@ -915,7 +977,6 @@ function formatDate(isoStr) {
 
 function stripClientRepeats(text) {
   if (!text) return "";
-  // Strip opening synthetic wrappers
   let cleaned = text.replace(/^<(?:response|answer)>\s*/i, "");
 
   // Cut at known stop tokens or synthetic markers
@@ -947,11 +1008,64 @@ function stripClientRepeats(text) {
   // Remove trailing unclosed tags
   cleaned = cleaned.replace(/(?:<br\s*\/?>?|<\s*|\/\s*>|\/><end.*)$/i, "");
 
+  // Cut at simulated turns or hallucinated user prompts
+  const simTurnPatterns = [
+    /\n(?:User|Human|Prompt):\s*/i,
+    /\n###\s*(?:User|Human|Prompt)/i,
+    /\n(?:hi\b|hello\b|hey\b).*?\?/i,
+    /\n(?:what are u|what are you|who are you)\b/i,
+    /\n(?:hi i am|hello i am)\b/i,
+    /\nI'm Ari\b/i
+  ];
+  for (const pat of simTurnPatterns) {
+    const m = cleaned.slice(20).search(pat);
+    if (m !== -1) {
+      cleaned = cleaned.slice(0, 20 + m);
+    }
+  }
+
+  // Universal paragraph deduplication: truncate before the first duplicate paragraph
+  const paras = cleaned.split("\n");
+  const seenParas = new Set();
+  const keptParas = [];
+  for (const p of paras) {
+    const pClean = p.trim();
+    if (pClean.length >= 30) {
+      const norm = pClean.replace(/[^\w\s]/g, "").toLowerCase();
+      if (seenParas.has(norm)) {
+        break;
+      }
+      seenParas.add(norm);
+    }
+    keptParas.push(p);
+  }
+  cleaned = keptParas.join("\n");
+
+  // Universal sentence deduplication: truncate before the first duplicate sentence
+  const sents = cleaned.split(/(?<=[.!?])\s+/);
+  const seenSents = new Set();
+  const keptSents = [];
+  for (const s of sents) {
+    const sClean = s.trim();
+    if (sClean.length >= 25) {
+      const norm = sClean.replace(/[^\w\s]/g, "").toLowerCase();
+      if (seenSents.has(norm)) {
+        break;
+      }
+      seenSents.add(norm);
+    }
+    keptSents.push(s);
+  }
+  cleaned = keptSents.join(" ");
+
   // Strip cyclical loops
   if (cleaned.length >= 6) {
-    for (let l = 2; l <= 35; l++) {
+    for (let l = 2; l <= 50; l++) {
       if (cleaned.length >= l * 3) {
         const pat = cleaned.slice(-l);
+        if (!pat.trim() || !/[a-zA-Z0-9]/.test(pat)) {
+          continue;
+        }
         if (cleaned.endsWith(pat.repeat(3))) {
           while (cleaned.endsWith(pat)) {
             cleaned = cleaned.slice(0, -l);

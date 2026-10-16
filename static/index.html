@@ -114,9 +114,8 @@
         <!-- Clean Model Selector -->
         <div class="relative">
           <select id="model-select" class="text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none">
-            <option value="ari-assistant" selected>Ari 1.5B (Default)</option>
-            <option value="qwen3.5:4b">Qwen 3.5 4B</option>
-            <option value="ari-rewritebot">Ari RewriteBot 135M</option>
+            <option value="ari-assistant-3b" selected>Ari 3B Assistant (Recommended)</option>
+            <option value="ari-assistant-1.5b">Ari 1.5B Assistant (Updated)</option>
           </select>
           <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
             <i class="fa-solid fa-chevron-down"></i>
@@ -215,6 +214,8 @@
               type="submit"
               id="send-btn"
               disabled
+              title="Send message"
+              aria-label="Send message"
               class="w-7 h-7 rounded-lg border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 card-minimal"
               style="border-color: var(--border-subtle)"
             >
@@ -223,7 +224,7 @@
           </div>
         </form>
         <p class="text-[11px] text-zinc-400 text-center mt-2">
-          Ari 1.5B is locally hosted. Verify critical information.
+          Ari 3B & 1.5B are locally hosted. Verify critical information.
         </p>
       </div>
     </div>

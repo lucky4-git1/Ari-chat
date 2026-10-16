@@ -20,6 +20,8 @@ DEFAULT_GGUF_PATH = MODELS_DIR / "ari_assistant_1.5b.gguf"
 
 _ENGINE_PROCESS: Optional[subprocess.Popen] = None
 
+_CURRENT_MODEL_PATH: Optional[Path] = None
+
 def get_engine_executable() -> Optional[Path]:
     """Returns the path to the standalone llama-server executable if present."""
     exe_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
@@ -27,50 +29,71 @@ def get_engine_executable() -> Optional[Path]:
     return exe_path if exe_path.exists() else None
 
 def list_available_models() -> List[str]:
-    """Scans models directory for all installed GGUF models."""
+    """Scans models directory strictly for installed assistant GGUF models (3B and updated 1.5B only)."""
     models = []
-    if MODELS_DIR.exists():
-        for f in sorted(MODELS_DIR.glob("*.gguf")):
-            clean_name = f.stem.replace("_", "-")
-            models.append(clean_name)
+    # Always prioritize 3B first, then 1.5B
+    for expected in ["ari-assistant-3b", "ari-assistant-1.5b"]:
+        fname = expected.replace("-", "_") + ".gguf"
+        if (MODELS_DIR / fname).exists():
+            models.append(expected)
+        elif expected == "ari-assistant-1.5b":
+            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
+            if alt.exists():
+                models.append(expected)
     if not models:
-        models = ["ari-assistant:1.5b"]
+        models = ["ari-assistant-3b", "ari-assistant-1.5b"]
     return models
 
-def get_model_file() -> Optional[Path]:
-    """Locates the GGUF model file, preferring 3B if available."""
-    if MODELS_DIR.exists():
-        # Check for 3b model first
-        for f in MODELS_DIR.glob("*.gguf"):
-            if "3b" in f.name.lower():
-                return f
-        # Otherwise any gguf
-        for f in MODELS_DIR.glob("*.gguf"):
-            return f
-            
+def get_model_file(requested_model: Optional[str] = None) -> Optional[Path]:
+    """Locates the GGUF model file for the requested model (1.5B or 3B), defaulting to 3B then 1.5B."""
+    if requested_model:
+        req = requested_model.lower().replace("-", "_")
+        if "1.5b" in req:
+            target = MODELS_DIR / "ari_assistant_1.5b.gguf"
+            if target.exists():
+                return target
+            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
+            if alt.exists():
+                return alt
+        elif "3b" in req:
+            target = MODELS_DIR / "ari_assistant_3b.gguf"
+            if target.exists():
+                return target
+            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_3b.gguf"
+            if alt.exists():
+                return alt
+
+    # Default preference: 3B first, then 1.5B
+    p3b = MODELS_DIR / "ari_assistant_3b.gguf"
+    if p3b.exists():
+        return p3b
+    p15b = MODELS_DIR / "ari_assistant_1.5b.gguf"
+    if p15b.exists():
+        return p15b
     if DEFAULT_GGUF_PATH.exists():
         return DEFAULT_GGUF_PATH
-    
-    # Check fallback in parent artifacts
     alt_path = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
     if alt_path.exists():
         return alt_path
-            
     return None
 
-def start_standalone_engine() -> bool:
-    """Launches llama-server in background if not already running."""
-    global _ENGINE_PROCESS
-    if _ENGINE_PROCESS is not None and _ENGINE_PROCESS.poll() is None:
-        logger.info("Standalone engine is already running.")
-        return True
-
+def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
+    """Launches llama-server in background with the designated assistant model."""
+    global _ENGINE_PROCESS, _CURRENT_MODEL_PATH
+    
     exe = get_engine_executable()
-    model = get_model_file()
+    model = model_path or get_model_file()
 
     if not exe or not model:
         logger.warning(f"Cannot auto-start standalone engine. Exe: {exe}, Model: {model}")
         return False
+
+    if _ENGINE_PROCESS is not None and _ENGINE_PROCESS.poll() is None:
+        if _CURRENT_MODEL_PATH and _CURRENT_MODEL_PATH.resolve() == model.resolve():
+            logger.info(f"Standalone engine already running with {model.name}")
+            return True
+        logger.info(f"Switching engine model to {model}...")
+        stop_standalone_engine()
 
     log_path = DATA_DIR / "llama_server.log"
     logger.info(f"Starting standalone engine: {exe} with model {model} (logging to {log_path})")
@@ -80,12 +103,21 @@ def start_standalone_engine() -> bool:
         cmd = [
             str(exe),
             "-m", str(model),
-            "-c", "2048",
+            "-c", "4096",
+            "-b", "512",
+            "-ub", "512",
             "-t", "4",
+            "-tb", "4",
+            "-np", "1",
+            "--repeat-penalty", "1.25",
+            "--repeat-last-n", "256",
+            "--dry-multiplier", "0.8",
+            "--dry-base", "1.75",
+            "--dry-allowed-length", "2",
+            "--dry-penalty-last-n", "256",
             "--port", "8080",
             "--host", "127.0.0.1",
             "--temp", "0.7",
-            "-cb"  # continuous batching
         ]
         
         # Detached/background flags on Windows
@@ -99,6 +131,7 @@ def start_standalone_engine() -> bool:
             stderr=subprocess.STDOUT,
             creationflags=creationflags
         )
+        _CURRENT_MODEL_PATH = model
         return True
     except Exception as e:
         logger.error(f"Failed to launch standalone engine: {e}")
@@ -106,7 +139,7 @@ def start_standalone_engine() -> bool:
 
 def stop_standalone_engine():
     """Stops the standalone llama-server process if launched by this app."""
-    global _ENGINE_PROCESS
+    global _ENGINE_PROCESS, _CURRENT_MODEL_PATH
     if _ENGINE_PROCESS is not None:
         logger.info("Shutting down standalone engine...")
         try:
@@ -120,28 +153,185 @@ def stop_standalone_engine():
                 pass
         _ENGINE_PROCESS = None
 
+    # Also ensure port 8080 is released on Windows
+    if sys.platform == "win32":
+        try:
+            out = subprocess.check_output("netstat -ano | findstr :8080", shell=True, text=True)
+            for line in out.strip().splitlines():
+                parts = line.split()
+                if len(parts) >= 5 and "LISTENING" in parts:
+                    pid = parts[-1]
+                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+        except Exception:
+            pass
+    _CURRENT_MODEL_PATH = None
+
+async def ensure_standalone_engine(model_name: Optional[str] = None) -> bool:
+    """Ensures standalone llama-server is running with the requested assistant model."""
+    target_path = get_model_file(model_name)
+    if not target_path:
+        return False
+
+    # Check if engine is running and which model is loaded
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            res = await client.get(f"{STANDALONE_BASE_URL}/props")
+            if res.status_code == 200:
+                current_alias = res.json().get("model_alias", "")
+                if current_alias and Path(current_alias).resolve() == target_path.resolve():
+                    return True
+                # Different model loaded: restart with target model
+                logger.info(f"Model switch detected: running={current_alias}, requested={target_path}")
+                stop_standalone_engine()
+                await asyncio.sleep(0.5)
+    except Exception:
+        pass
+
+    # Launch engine with target model
+    if not start_standalone_engine(target_path):
+        return False
+
+    # Wait up to 10 seconds for engine to be ready
+    for _ in range(20):
+        await asyncio.sleep(0.5)
+        try:
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                res = await client.get(f"{STANDALONE_BASE_URL}/health")
+                if res.status_code == 200:
+                    return True
+        except Exception:
+            pass
+
+    return False
+
 def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
-    """Detects if text contains metadata leaks, hashtag runs, or cyclic repetitions."""
+    """Universal repetition detection: detects metadata leaks, hashtag runs, duplicate sentences/paragraphs, and phrase loops."""
     if not text or len(text) < 4:
         return None
 
-    # Detect metadata headers or special delimiters
-    for marker in ["_Static", "Statics", "⏤", "<nooutput>"]:
-        if marker in text:
+    # Detect metadata headers, internal notes, or special delimiters
+    for marker in [
+        "_Static", "Statics", "⏤", "<nooutput>", ":async:", "async:", "[async]",
+        "note to self:", "note to self", "?(", "!(", ".("
+    ]:
+        if marker in text.lower():
             return marker
 
-    # Detect hashtag runs (#word#word or #yg#yg)
-    if "#" in text and len(text.split("#")) >= 3:
+    # If we are currently inside a code block (``` or open <style>/<script>), 
+    # skip natural language paragraph/sentence deduplication to allow CSS/HTML/code structures
+    in_code = (text.count("```") % 2 == 1)
+    lower = text.lower()
+    if not in_code:
+        for tag in ["<style", "<script", "<svg"]:
+            close_tag = "</" + tag[1:] + ">"
+            if tag in lower and close_tag not in lower[lower.rfind(tag):]:
+                in_code = True
+                break
+
+    if in_code:
+        # Only detect extreme runaway repetition (same code chunk repeated 5+ times)
+        for l in range(10, 80):
+            if len(text) >= l * 5:
+                pattern = text[-l:]
+                if not pattern.strip() or not any(c.isalnum() for c in pattern):
+                    continue
+                if text.endswith(pattern * 5):
+                    return pattern
+        return None
+
+    # Detect parenthetical prompt/suggestion cascades: e.g. \n(What can I do for you?)\n(How can I assist you?)
+    if re.search(r'(\n\s*\([A-Z][^)]*[?!.]?\s*\)){1,}', text) and len(text) > 40:
+        return "\n("
+
+    # 1. Universal Paragraph-level duplicate check (detects duplicate paragraphs >= 30 chars)
+    paras = [p.strip() for p in text.split('\n') if len(p.strip()) >= 30]
+    seen_paras = set()
+    for p in paras:
+        norm = re.sub(r'[^\w\s]', '', p).lower()
+        if norm in seen_paras:
+            return p
+        seen_paras.add(norm)
+
+    # 2. Universal Sentence-level duplicate check (detects duplicate sentences >= 25 chars)
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+', text) if len(s.strip()) >= 25]
+    seen_sents = set()
+    for s in sentences:
+        norm = re.sub(r'[^\w\s]', '', s).lower()
+        if norm in seen_sents:
+            return s
+        seen_sents.add(norm)
+
+    # 3. Universal 8-word sequence duplicate check (detects phrase echoing across sentences)
+    words = text.lower().split()
+    if len(words) >= 16:
+        n = 8
+        seen_ngrams = set()
+        for i in range(len(words) - n + 1):
+            ngram = ' '.join(words[i:i+n])
+            if ngram in seen_ngrams:
+                return ngram
+            seen_ngrams.add(ngram)
+
+    # 4. Detect multi-word / sentence / paragraph cyclic repetitions (threshold=2 for lengths 15 to 1000)
+    clean_strip = text.rstrip()
+    for l in range(15, min(len(clean_strip) // 2 + 1, 1000)):
+        pattern = clean_strip[-l:]
+        if not pattern.strip() or len(pattern.strip()) < 8:
+            continue
+        prefix = clean_strip[:-l].rstrip()
+        if prefix.endswith(pattern):
+            return pattern
+
+    # 5. Detect actual concatenated hashtag cascades (#word#word#word)
+    if re.search(r'(?:\#[a-zA-Z0-9_\-]{1,15}){3,}', text):
         return "#"
 
-    # Detect cyclic substring repetition (e.g. "Intialized.Intialized.Intialized.")
+    # 6. Detect short cyclic substring repetition (e.g. "Intialized.Intialized.Intialized.")
     for l in range(2, 35):
         if len(text) >= l * threshold:
             pattern = text[-l:]
+            # Must not be pure whitespace/indentation, and must contain alphanumeric characters
+            if not pattern.strip() or not any(c.isalnum() for c in pattern):
+                continue
             if text.endswith(pattern * threshold):
                 return pattern
 
     return None
+
+def detect_simulated_turn(text: str) -> bool:
+    """Detects if text contains simulated human messages, re-introductions, tool tags, or conversational turn transitions."""
+    if len(text) < 25:
+        return False
+
+    in_code = (text.count("```") % 2 == 1)
+
+    patterns = [
+        r'</tool_call>',
+        r'<tool_call>',
+        r'</tool_response>',
+        r'<tool_response>',
+        r'\n(?:User|Human|Question|Prompt):\s*',
+        r'\n###\s*(?:User|Human|Prompt)',
+    ]
+
+    if not in_code:
+        patterns.extend([
+            r'(?:What can I do for you today\?|How may I assist you today\?|How can I help you today\?|What\'s on your mind\?)\s*\n\s*\S',
+            r'Let\'s chat!\s*\n\s*\S',
+            r'\n\n[A-Z][a-z0-9\s,\'\"\-]{2,50}\?\s*\n',
+            r'\n(?:hi\b|hello\b|hey\b).*?\?',
+            r'\n(?:what are u|what are you|who are you|how are you)\b',
+            r'\n(?:hi i am|hello i am|i am [a-z]+)\b',
+            r'\nI\'m Ari\b',
+            r'\n(?:Sure thing|Of course|Certainly)[,\-!.]\s+(?:what|how|let)\b',
+            r'note to self',
+            r'\?\('
+        ])
+    for p in patterns:
+        m = re.search(p, text, re.IGNORECASE)
+        if m and m.start() > 10:
+            return True
+    return False
 
 def strip_repeating_suffix(text: str, pattern: str) -> str:
     """Strips all consecutive instances of pattern from the end of text."""
@@ -156,7 +346,6 @@ def clean_response_text(text: str) -> str:
     # Strip opening synthetic wrappers if present
     text = re.sub(r'^(<response>|<answer>)\s*', '', text, flags=re.IGNORECASE)
 
-    # Cut off at known stop tokens, turn markers, or metadata delimiters
     stop_markers = [
         "</response>",
         "</answer>",
@@ -169,21 +358,17 @@ def clean_response_text(text: str) -> str:
         "Statics",
         "⏤",
         "<nooutput>",
+        ":async:",
+        ":async",
+        "async:",
+        "[async]",
         "//[",
         "[iVar",
         "Intialized:",
         "Intialized.",
         "Answered.",
-        "<br/>",
-        "<br>",
         "[view answer]",
         "[\\view answer\\]",
-        "<colgroup",
-        "<table",
-        "<a href",
-        "<p class=",
-        "<span id=",
-        "synthetic ingredients",
         ">delete",
         "ondelete",
         "user deleted",
@@ -194,39 +379,84 @@ def clean_response_text(text: str) -> str:
             idx = text.lower().find(marker.lower())
             text = text[:idx]
 
-    # Remove any dangling or leftover HTML tags & broken forum links
+    # Remove forum scrapers like [View Answer]
     text = re.sub(r'\[\\?\[?View Answer\\?\]?\]\([^)]+\)', '', text, flags=re.IGNORECASE)
     text = re.sub(r'\[View Answer\]', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<a\s+href=[^>]+>.*?</a>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'<(?:table|colgroup|tr|td|th|span|p|div|b|h\d)[^>]*>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'</(?:table|colgroup|tr|td|th|span|p|div|b|h\d)>', '', text, flags=re.IGNORECASE)
-    text = re.sub(r'(<br\s*/?|<\s*|/\s*>|/><end.*)$', '', text, flags=re.IGNORECASE)
     text = re.sub(r'(?:>Delete|onDelete|User deleted).*$', '', text, flags=re.IGNORECASE)
     
     # Strip hashtag cascades or trailing hashtags (#sriyu, #yg#yg)
     text = re.sub(r'(\#[a-zA-Z0-9_\-]{1,15}){2,}.*$', '', text)
     text = re.sub(r'\s*\#[a-zA-Z0-9_\-]{2,20}\s*$', '', text)
     # Keep printable ASCII, newlines, and tabs
-    text = re.sub(r'[^\x20-\x7E\r\n\t]+', '', text)
-    # Strip any repeating loops
+    # Universal paragraph deduplication: truncate before the first duplicate paragraph
+    paras = text.split('\n')
+    seen_paras = set()
+    kept_paras = []
+    for p in paras:
+        p_clean = p.strip()
+        if len(p_clean) >= 30:
+            norm = re.sub(r'[^\w\s]', '', p_clean).lower()
+            if norm in seen_paras:
+                break
+            seen_paras.add(norm)
+        kept_paras.append(p)
+    text = '\n'.join(kept_paras)
+
+    # Universal sentence deduplication: truncate before the first duplicate sentence
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    seen_sents = set()
+    kept_sents = []
+    for s in sentences:
+        s_clean = s.strip()
+        if len(s_clean) >= 25:
+            norm = re.sub(r'[^\w\s]', '', s_clean).lower()
+            if norm in seen_sents:
+                break
+            seen_sents.add(norm)
+        kept_sents.append(s)
+    text = ' '.join(kept_sents)
+
+    # Strip repeating loops
     pat = detect_repetition(text, threshold=3)
     if pat and pat not in ["#", "_Static", "Statics", "⏤", "<nooutput>"]:
         text = strip_repeating_suffix(text, pat)
+
+    # Strip parenthetical alternative prompt / suggestion lists (e.g. (Have a nice day!), \n(What can I do for you?))
+    text = re.sub(r'(\?|\.|\!)\s*\([A-Z][^)]*[?!.]?\).*$', r'\1', text, flags=re.DOTALL)
+    text = re.sub(r'(\n\s*\([A-Z][^)]*[?!.]?\s*\)){1,}.*$', '', text, flags=re.DOTALL)
+    text = re.sub(r'\n*\s*Note(?:\s+to\s+self)?\s*:.*$', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\n\s*\((?:Note|What|How|Is there|Have a|Do you|Feel free|Can I|Need help|Let me know)[^)]*\).*$', '', text, flags=re.IGNORECASE | re.DOTALL)
+    text = re.sub(r'\n\s*\([A-Z][^)]*[?!]\)\s*$', '', text)
     
     # Strip web scrape button artifacts like 'Copy', 'Copied'
     text = re.sub(r'^(?:Copy|Copied)\s*\n?', '', text, flags=re.MULTILINE | re.IGNORECASE)
     text = re.sub(r'\n(?:Copy|Copied)\s*\n?', '\n', text, flags=re.IGNORECASE)
 
-    # Cut off simulated subsequent user turns
+    # Cut off simulated subsequent user turns, conversational restarts, or re-introductions
     simulated_turns = [
+        r'</tool_call>',
+        r'<tool_call>',
+        r'</tool_response>',
+        r'<tool_response>',
         r'\n(?:User|Human|Question|Prompt):\s*',
         r'\n###\s*(?:User|Human|Prompt)',
-        r'\n(?:make a navbar|how to make|can you make|can u make|what is)\b'
+        r'\n(?:hi\b|hello\b|hey\b).*?\?',
+        r'\n(?:what are u|what are you|who are you|how are you)\b',
+        r'\n(?:hi i am|hello i am|i am [a-z]+)\b',
+        r'Let\'s chat!\s*\n',
+        r'What\'s on your mind\?\s*Let\'s chat!\s*\n',
+        r'\n(?:Sure thing|Of course|Certainly)[,\-!.]\s+(?:what|how|let)\b',
+        r'\n\n[A-Z][a-z0-9\s,\'\"\-]{2,50}\?\s*\n'
     ]
     for sim in simulated_turns:
         m = re.search(sim, text, re.IGNORECASE)
         if m and m.start() > 20: # ensure we don't cut off immediate start
             text = text[:m.start()]
+
+    # Cut off duplicate self re-introduction if repeated
+    reintro_match = re.search(r'\nI\'m Ari\b', text[20:], re.IGNORECASE)
+    if reintro_match:
+        text = text[:20 + reintro_match.start()]
 
     # Auto-fence bare HTML code so browsers highlight it instead of executing live elements
     if "```" not in text:
@@ -240,6 +470,11 @@ def clean_response_text(text: str) -> str:
     # Auto-close unclosed code fences if generation was truncated mid-code
     if text.count("```") % 2 != 0:
         text = text.rstrip() + "\n```"
+    elif "```" not in text:
+        # If generation ended mid-sentence without closing punctuation, trim to the last complete sentence
+        last_punct = max(text.rfind('.'), text.rfind('!'), text.rfind('?'))
+        if last_punct > 30 and (len(text) - last_punct) > 2:
+            text = text[:last_punct + 1]
 
     return text.strip()
 
@@ -253,7 +488,7 @@ async def check_engine_health() -> Dict[str, Any]:
                 return {
                     "online": True,
                     "engine": "standalone",
-                    "models": ["ari-assistant:1.5b"]
+                    "models": list_available_models()
                 }
     except Exception:
         pass
@@ -263,12 +498,10 @@ async def check_engine_health() -> Dict[str, Any]:
         async with httpx.AsyncClient(timeout=2.0) as client:
             res = await client.get(f"{OLLAMA_BASE_URL}/api/tags")
             if res.status_code == 200:
-                data = res.json()
-                models = [m.get("name") for m in data.get("models", [])]
                 return {
                     "online": True,
                     "engine": "ollama",
-                    "models": models if models else ["ari-assistant:1.5b"]
+                    "models": list_available_models()
                 }
     except Exception:
         pass
@@ -279,7 +512,7 @@ async def check_engine_health() -> Dict[str, Any]:
     return {
         "online": False,
         "engine": "standalone" if (has_exe and has_model) else "none",
-        "models": ["ari-assistant:1.5b"] if (has_exe and has_model) else []
+        "models": list_available_models() if (has_exe and has_model) else []
     }
 
 # Backward compatibility alias
@@ -295,56 +528,34 @@ STOP_WORDS = [
     "</answer>",
     "<endofconversation>",
     "<startchat>",
-    "//[",
-    "[iVar",
-    "<br/>",
-    "<br>",
-    "Intialized:",
-    "Intialized.",
-    "Answered.",
-    "[View Answer]",
-    "[view answer]",
-    "<colgroup",
-    "<table",
-    "<a href",
-    "<p class=",
-    "Synthetic Ingredients",
-    "_Static",
-    "Statics",
-    "⏤",
-    "<nooutput>",
-    "\n#",
-    "\n<|im_start|>",
-    "\n<|im_end|>",
+    "</tool_call>",
+    "<tool_call>",
+    "</tool_response>",
+    "<tool_response>",
     "\nUser:",
     "\nHuman:",
     "\nQuestion:",
     "\n### User",
-    "\n### Human"
+    "\n### Human",
+    "\n<|im_start|>user",
+    "\n<|im_start|>assistant",
+    "\nhi i am",
+    "\nhello i am",
+    "Let's chat!\n",
 ]
 
 async def stream_chat_completion(
     messages: List[Dict[str, str]],
     model: str = DEFAULT_MODEL,
     temperature: float = 0.35,
-    reasoning_mode: bool = False
+    reasoning_mode: bool = False,
+    max_tokens: int = 2048
 ) -> AsyncGenerator[str, None]:
     """Streams chat tokens from Standalone llama-server (OpenAI format) or Ollama with circuit breakers."""
+    # Ensure standalone engine is ready and serving the requested model (3B or 1.5B)
+    standalone_ready = await ensure_standalone_engine(model)
     health = await check_engine_health()
-
-    # If neither is running, try auto-starting standalone engine
-    if not health.get("online"):
-        logger.info("Engine offline. Attempting to auto-start standalone engine...")
-        if start_standalone_engine():
-            # Wait up to 6 seconds for engine to be ready
-            for _ in range(12):
-                await asyncio.sleep(0.5)
-                h = await check_engine_health()
-                if h.get("online"):
-                    health = h
-                    break
-
-    engine_type = health.get("engine", "standalone")
+    engine_type = "standalone" if standalone_ready else health.get("engine", "standalone")
 
     # Inject reasoning instruction if requested
     processed_messages = list(messages)
@@ -361,7 +572,7 @@ async def stream_chat_completion(
 
     if engine_type == "standalone" or health.get("online"):
         # Stream from Standalone llama-server (OpenAI-compatible /v1/chat/completions)
-        async for item in _stream_standalone(processed_messages, temperature):
+        async for item in _stream_standalone(processed_messages, temperature, max_tokens):
             yield item
     else:
         # Stream from Ollama
@@ -370,16 +581,24 @@ async def stream_chat_completion(
 
 async def _stream_standalone(
     messages: List[Dict[str, str]],
-    temperature: float = 0.35
+    temperature: float = 0.35,
+    max_tokens: int = 2048
 ) -> AsyncGenerator[str, None]:
     """Streams tokens via OpenAI SSE format from standalone llama-server."""
     url = f"{STANDALONE_BASE_URL}/v1/chat/completions"
     payload = {
         "messages": messages,
         "temperature": temperature,
-        "presence_penalty": 0.2,
+        "top_p": 0.9,
+        "top_k": 40,
+        "presence_penalty": 0.3,
         "frequency_penalty": 0.3,
-        "max_tokens": 1024,
+        "repeat_penalty": 1.25,
+        "dry_multiplier": 0.8,
+        "dry_base": 1.75,
+        "dry_allowed_length": 2,
+        "dry_penalty_last_n": 256,
+        "max_tokens": max_tokens,
         "stop": STOP_WORDS,
         "stream": True
     }
@@ -419,12 +638,16 @@ async def _stream_standalone(
 
                                 for stop_tok in STOP_WORDS:
                                     if stop_tok.lower() in accumulated.lower():
-                                        yield json.dumps({"done": True, "token": "", "circuit_break": True}) + "\n"
+                                        yield json.dumps({"done": True, "token": "", "circuit_break": True, "reason": f"stop_word:{stop_tok}"}) + "\n"
                                         return
+
+                                if detect_simulated_turn(accumulated):
+                                    yield json.dumps({"done": True, "token": "", "circuit_break": True, "reason": "simulated_turn"}) + "\n"
+                                    return
 
                                 rep_pat = detect_repetition(accumulated, threshold=3)
                                 if rep_pat:
-                                    yield json.dumps({"done": True, "circuit_break": True}) + "\n"
+                                    yield json.dumps({"done": True, "circuit_break": True, "reason": f"repetition:{rep_pat}"}) + "\n"
                                     return
 
                                 yield json.dumps({"token": clean_tok, "done": done}) + "\n"

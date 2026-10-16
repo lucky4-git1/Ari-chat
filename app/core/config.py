@@ -10,8 +10,8 @@ VERSION = "1.0.0"
 
 # Ollama Engine Settings
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "ari-assistant")
-FALLBACK_MODEL = os.getenv("FALLBACK_MODEL", "ari-rewritebot")
+DEFAULT_MODEL = os.getenv("DEFAULT_MODEL", "ari-assistant-3b")
+FALLBACK_MODEL = os.getenv("FALLBACK_MODEL", "ari-assistant-1.5b")
 
 # Database Path
 DB_PATH = DATA_DIR / "ari_chat.db"

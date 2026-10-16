@@ -1,4 +1,4 @@
-FROM ./artifacts/checkpoints/ari_assistant_1.5b.gguf
+FROM ./models/ari_assistant_3b.gguf
 
 TEMPLATE """{{ if .System }}<|im_start|>system
 {{ .System }}<|im_end|>
@@ -10,38 +10,40 @@ TEMPLATE """{{ if .System }}<|im_start|>system
 {{ end }}<|im_start|>assistant
 {{ end }}"""
 
+# ChatML Core Stops
 PARAMETER stop "<|im_start|>"
 PARAMETER stop "<|im_end|>"
 PARAMETER stop "<|endoftext|>"
-PARAMETER stop "<|object_ref_start|>"
-PARAMETER stop "<|box_start|>"
-PARAMETER stop "</response>"
-PARAMETER stop "</answer>"
-PARAMETER stop "<endofconversation>"
-PARAMETER stop "<startchat>"
-PARAMETER stop "//["
-PARAMETER stop "[iVar"
-PARAMETER stop "<br/>"
-PARAMETER stop "<br>"
-PARAMETER stop "Intialized:"
-PARAMETER stop "Answered."
-PARAMETER stop "[View Answer]"
-PARAMETER stop "<colgroup"
-PARAMETER stop "<table"
-PARAMETER stop "<a href"
-PARAMETER stop "Synthetic Ingredients"
-PARAMETER stop "_Static"
-PARAMETER stop "Statics"
-PARAMETER stop "⏤"
+
+# Training & Synthetic Artifact Stops
+PARAMETER stop "<Task"
+PARAMETER stop "###"
+PARAMETER stop "### Input:"
+PARAMETER stop "### Response:"
+PARAMETER stop "<unk>"
 PARAMETER stop "<nooutput>"
-PARAMETER stop "\n#"
-PARAMETER temperature 0.7
+PARAMETER stop "<none>"
+PARAMETER stop "Intialized:"
+PARAMETER stop "Initialized:"
+
+# Agent Scratchpad Stops
+PARAMETER stop "No Output"
+PARAMETER stop "No output"
+PARAMETER stop "This task is complete"
+
+# Foreign Glyphs (Thai leakage suppression)
+PARAMETER stop "เรียน"
+PARAMETER stop "à¹€à¸£à¸µà¸¢à¸™"
+PARAMETER stop "à¸à¸¸"
+
+# High-Performance Generation Parameters
+PARAMETER temperature 0.6
 PARAMETER top_p 0.9
 PARAMETER top_k 40
-PARAMETER repeat_penalty 1.25
+PARAMETER repeat_penalty 1.15
 PARAMETER repeat_last_n 64
-PARAMETER num_predict 300
-PARAMETER num_ctx 2048
+PARAMETER num_predict 2048
+PARAMETER num_ctx 4096
 PARAMETER num_thread 4
 
-SYSTEM """You are Ari-LLM, a helpful, intelligent, honest, and highly capable AI assistant developed by Ari AI. You excel at software development, logical reasoning, concise explanations, and creative problem-solving."""
+SYSTEM """You are Ari, a thoughtful, warm, and exceptionally capable personal AI companion developed by Ari AI. You excel at software engineering, logical reasoning, clear explanations, and friendly conversation."""

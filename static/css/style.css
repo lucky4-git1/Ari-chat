@@ -279,3 +279,20 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
   animation: blink 0.8s infinite;
   margin-left: 2px;
 }
+
+/* Modern Send/Stop Button State */
+#send-btn.stop-active {
+  background-color: var(--text-primary) !important;
+  color: var(--accent-contrast) !important;
+  border-color: var(--text-primary) !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+  transform: scale(1.04);
+}
+#send-btn.stop-active:hover {
+  opacity: 0.85 !important;
+}
+#send-btn.stop-active:active {
+  transform: scale(0.96);
+}

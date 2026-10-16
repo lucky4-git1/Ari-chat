@@ -169,14 +169,13 @@ async def send_message_stream(
     # 5. Build full message context for Ollama
     system_prompt = (
         "You are Ari, a thoughtful, warm, and exceptionally capable personal AI companion developed by Ari AI.\n\n"
-        "Core Persona & Guidelines:\n"
-        "- Tone: Warm, empathetic, intellectually curious, articulate, and supportive.\n"
-        "- Emotional Attunement: When the user shares feelings or seeks advice (e.g., feeling low, overwhelmed, or seeking guidance), respond with genuine compassion, thoughtful understanding, and practical, caring suggestions.\n"
-        "- Structured Excellence: When asked for recipes, guides, or tutorials, always structure with clear headings, bulleted Ingredients/Materials, and numbered Steps.\n"
-        "- Code & Software: When asked to build code, websites, or components, provide ONE complete, self-contained, working solution enclosed inside fenced markdown blocks (e.g., ```html ... ```). Never give broken partial tags, never simulate follow-up questions, and close all code blocks cleanly.\n"
-        "- Direct & Crisp: Answer directly and conversationally. Do not repeat greeting templates.\n"
+        "Guidelines:\n"
+        "- Respond directly, clearly, and conversationally with genuine warmth. Keep small talk and greetings concise (1-2 sentences).\n"
+        "- When writing code, provide complete, production-ready, self-contained solutions inside fenced code blocks (```html ... ```).\n"
+        "- When sharing recipes or guides, always format with clear Ingredients and numbered Steps.\n"
+        "- Provide ONE direct response and stop immediately. Never simulate follow-up user questions, user replies, parenthetical notes, or multi-turn dialogues.\n"
         "- Formatting Integrity: Never generate raw HTML tags, website metadata, scraping artifacts, or '[View Answer]' links.\n"
-        "- Safety: If asked for instructions regarding illicit drug synthesis (such as methamphetamine), weapons, or dangerous acts, refuse politely and offer safe educational context or harm reduction resources."
+        "- Safety: If asked for dangerous, harmful, or illegal instructions, refuse politely and offer safe educational context."
     )
     if memory_prompt_block:
         system_prompt += f"\n\n{memory_prompt_block}"
@@ -195,6 +194,9 @@ async def send_message_stream(
 
     chosen_model = req.model or conv.model or DEFAULT_MODEL
 
+    # High capacity token budget (2048 tokens) to allow full code files, detailed guides, and complete answers
+    max_tokens_limit = 2048
+
     async def sse_event_generator():
         # Notify client if long-term memory was learned
         if new_memory:
@@ -205,28 +207,33 @@ async def send_message_stream(
             yield f"data: {json.dumps({'type': 'sources', 'sources': search_sources})}\n\n"
 
         full_assistant_reply = []
-        async for chunk_str in stream_chat_completion(
-            messages=ollama_messages,
-            model=chosen_model,
-            reasoning_mode=req.reasoning_mode
-        ):
-            try:
-                data = json.loads(chunk_str.strip())
-                if "error" in data:
-                    yield f"data: {json.dumps({'type': 'error', 'error': data['error']})}\n\n"
-                    break
-                
-                token = data.get("token", "")
-                done = data.get("done", False)
+        try:
+            async for chunk_str in stream_chat_completion(
+                messages=ollama_messages,
+                model=chosen_model,
+                reasoning_mode=req.reasoning_mode,
+                max_tokens=max_tokens_limit
+            ):
+                try:
+                    data = json.loads(chunk_str.strip())
+                    if "error" in data:
+                        yield f"data: {json.dumps({'type': 'error', 'error': data['error']})}\n\n"
+                        break
+                    
+                    token = data.get("token", "")
+                    done = data.get("done", False)
 
-                if token:
-                    full_assistant_reply.append(token)
-                    yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
+                    if token:
+                        full_assistant_reply.append(token)
+                        yield f"data: {json.dumps({'type': 'token', 'token': token})}\n\n"
 
-                if done:
-                    break
-            except Exception:
-                continue
+                    if done:
+                        break
+                except Exception:
+                    continue
+        except (asyncio.CancelledError, GeneratorExit):
+            # Handled when user clicks Stop button or client disconnects
+            pass
 
         # Post-process full reply to clean metadata, repetitions, and stop tokens
         raw_text = "".join(full_assistant_reply)
@@ -240,25 +247,29 @@ async def send_message_stream(
             reasoning_content = parts[0].replace("<thought>", "").strip()
             final_answer = clean_response_text(parts[1])
 
-        # Save assistant message in DB using a new session
-        save_db = SessionLocal()
-        try:
-            asst_msg = Message(
-                conversation_id=conv_id,
-                role="assistant",
-                content=final_answer,
-                reasoning=reasoning_content,
-                sources_json=json.dumps(search_sources) if search_sources else None
-            )
-            save_db.add(asst_msg)
-            save_conv = save_db.query(Conversation).filter(Conversation.id == conv_id).first()
-            if save_conv:
-                save_conv.updated_at = datetime.utcnow()
-            save_db.commit()
-            save_db.refresh(asst_msg)
-            
-            yield f"data: {json.dumps({'type': 'done', 'clean_content': final_answer, 'message_id': asst_msg.id})}\n\n"
-        finally:
-            save_db.close()
+        # Save assistant message in DB using a new session if any content was produced
+        if final_answer.strip():
+            save_db = SessionLocal()
+            try:
+                asst_msg = Message(
+                    conversation_id=conv_id,
+                    role="assistant",
+                    content=final_answer,
+                    reasoning=reasoning_content,
+                    sources_json=json.dumps(search_sources) if search_sources else None
+                )
+                save_db.add(asst_msg)
+                save_conv = save_db.query(Conversation).filter(Conversation.id == conv_id).first()
+                if save_conv:
+                    save_conv.updated_at = datetime.utcnow()
+                save_db.commit()
+                save_db.refresh(asst_msg)
+                
+                try:
+                    yield f"data: {json.dumps({'type': 'done', 'clean_content': final_answer, 'message_id': asst_msg.id})}\n\n"
+                except (asyncio.CancelledError, GeneratorExit):
+                    pass
+            finally:
+                save_db.close()
 
     return StreamingResponse(sse_event_generator(), media_type="text/event-stream")
