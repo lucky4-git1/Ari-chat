@@ -34,6 +34,8 @@ a = Analysis(
         'sqlalchemy.orm',
         'httpx',
         'ddgs',
+        'app.api.model_routes',
+        'app.services.model_manager',
     ],
     hookspath=[],
     hooksconfig={},
@@ -67,4 +69,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['app.ico'],
 )

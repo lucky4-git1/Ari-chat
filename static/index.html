@@ -111,15 +111,22 @@
           <i class="fa-solid fa-bars text-sm"></i>
         </button>
         
-        <!-- Clean Model Selector -->
-        <div class="relative">
-          <select id="model-select" class="text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none">
-            <option value="ari-assistant-3b" selected>Ari 3B Assistant (Recommended)</option>
-            <option value="ari-assistant-1.5b">Ari 1.5B Assistant (Updated)</option>
-          </select>
-          <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
-            <i class="fa-solid fa-chevron-down"></i>
+        <!-- Clean Model Selector & Pull Button -->
+        <div class="flex items-center gap-2">
+          <div class="relative">
+            <select id="model-select" class="text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none">
+              <option value="ari-assistant-3b">Ari 3B Assistant (Recommended)</option>
+              <option value="ari-assistant-1.5b" selected>Ari 1.5B Assistant (Fast)</option>
+            </select>
+            <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
+              <i class="fa-solid fa-chevron-down"></i>
+            </div>
           </div>
+
+          <button id="pull-model-btn" class="hidden text-xs font-medium px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-indigo-500 hover:text-indigo-400" title="Pull Ari 3B Model (1.9 GB)">
+            <i class="fa-solid fa-cloud-arrow-down text-xs"></i>
+            <span id="pull-model-btn-text">Pull Ari 3B (1.9 GB)</span>
+          </button>
         </div>
 
         <span id="chat-title" class="text-xs text-zinc-400 truncate max-w-[200px] hidden sm:inline">New Chat</span>
@@ -312,6 +319,70 @@
       <div class="pt-2 border-t flex items-center justify-between text-xs" style="border-color: var(--border-subtle)">
         <button id="clear-all-memories-btn" class="text-rose-500 hover:underline">Clear All</button>
         <span class="text-zinc-400 text-[11px]">Persistent across chats</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Model Pull / Download Modal -->
+  <div id="model-pull-modal" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 hidden">
+    <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
+            <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold tracking-tight" id="pull-modal-title">Pull Ari 3B Model</h3>
+            <p class="text-[11px] text-zinc-400">Direct streaming from Hugging Face CDN</p>
+          </div>
+        </div>
+        <button id="close-pull-modal-btn" class="text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- Model Specs Card -->
+      <div class="p-3 rounded-lg border space-y-2 text-xs" style="border-color: var(--border-subtle)">
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-zinc-300">Model:</span>
+          <span class="font-mono text-[11px] text-indigo-400">ari_assistant_3b.gguf</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-zinc-300">Download Size:</span>
+          <span class="font-mono text-[11px] text-zinc-400">~1.93 GB (Q4_K_M)</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <span class="font-medium text-zinc-300">Capabilities:</span>
+          <span class="text-[11px] text-zinc-400 text-right">High-precision reasoning, deep context & multi-turn</span>
+        </div>
+      </div>
+
+      <!-- Download Progress Display -->
+      <div id="pull-progress-section" class="space-y-2 hidden">
+        <div class="flex items-center justify-between text-xs">
+          <span id="pull-status-label" class="text-zinc-300 font-medium">Downloading...</span>
+          <span id="pull-percent-label" class="font-mono font-semibold text-indigo-400">0%</span>
+        </div>
+        <!-- Progress Bar Track -->
+        <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+          <div id="pull-progress-bar" class="h-full bg-indigo-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-zinc-400 font-mono pt-1">
+          <span id="pull-bytes-label">0 MB / 1930 MB</span>
+          <span id="pull-speed-label">0.0 MB/s</span>
+        </div>
+        <p id="pull-eta-label" class="text-[10px] text-zinc-500 text-right">Calculating ETA...</p>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
+        <button id="cancel-pull-btn" class="px-3 py-1.5 rounded-md text-xs font-medium border hidden hover:text-rose-400 transition-colors" style="border-color: var(--border-subtle)">
+          Cancel
+        </button>
+        <button id="start-pull-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center gap-2">
+          <i class="fa-solid fa-download"></i>
+          <span>Start Download</span>
+        </button>
       </div>
     </div>
   </div>

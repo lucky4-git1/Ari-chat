@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +11,7 @@ from app.db.database import init_db
 from app.api.auth_routes import router as auth_router
 from app.api.chat_routes import router as chat_router
 from app.api.memory_routes import router as memory_router
+from app.api.model_routes import router as model_router
 from app.services.engine_service import check_engine_health, start_standalone_engine, stop_standalone_engine
 
 app = FastAPI(
@@ -42,6 +44,7 @@ def on_shutdown():
 app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(memory_router)
+app.include_router(model_router)
 
 @app.get("/api/health")
 async def health_check():
@@ -56,6 +59,10 @@ async def health_check():
 
 # Static assets and SPA mounting
 STATIC_DIR = BASE_DIR / "static"
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+    bundled = Path(sys._MEIPASS) / "static"
+    if bundled.exists():
+        STATIC_DIR = bundled
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")

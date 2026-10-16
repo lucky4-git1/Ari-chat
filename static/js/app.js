@@ -11,7 +11,9 @@ const state = {
   reasoningMode: false,
   isGenerating: false,
   abortController: null,
-  authMode: "login" // 'login' or 'register'
+  authMode: "login", // 'login' or 'register'
+  modelsData: [],
+  modelPullTimer: null
 };
 
 // DOM Elements
@@ -23,6 +25,19 @@ const DOM = {
   closeSidebarBtn: document.getElementById("close-sidebar-btn"),
   newChatBtn: document.getElementById("new-chat-btn"),
   modelSelect: document.getElementById("model-select"),
+  pullModelBtn: document.getElementById("pull-model-btn"),
+  pullModelBtnText: document.getElementById("pull-model-btn-text"),
+  modelPullModal: document.getElementById("model-pull-modal"),
+  closePullModalBtn: document.getElementById("close-pull-modal-btn"),
+  startPullBtn: document.getElementById("start-pull-btn"),
+  cancelPullBtn: document.getElementById("cancel-pull-btn"),
+  pullProgressSection: document.getElementById("pull-progress-section"),
+  pullStatusLabel: document.getElementById("pull-status-label"),
+  pullPercentLabel: document.getElementById("pull-percent-label"),
+  pullProgressBar: document.getElementById("pull-progress-bar"),
+  pullBytesLabel: document.getElementById("pull-bytes-label"),
+  pullSpeedLabel: document.getElementById("pull-speed-label"),
+  pullEtaLabel: document.getElementById("pull-eta-label"),
   searchConvInput: document.getElementById("search-conv-input"),
   conversationsList: document.getElementById("conversations-list"),
   userName: document.getElementById("user-name"),
@@ -211,6 +226,13 @@ function setupEventListeners() {
   DOM.closeMemoryModalBtn?.addEventListener("click", closeMemoryModal);
   DOM.addMemoryForm?.addEventListener("submit", handleAddMemory);
   DOM.clearAllMemoriesBtn?.addEventListener("click", handleClearMemories);
+
+  // Model Pull Listeners
+  DOM.pullModelBtn?.addEventListener("click", openPullModelModal);
+  DOM.closePullModalBtn?.addEventListener("click", closePullModelModal);
+  DOM.startPullBtn?.addEventListener("click", handleStartPull);
+  DOM.cancelPullBtn?.addEventListener("click", handleCancelPull);
+  DOM.modelSelect?.addEventListener("change", handleModelSelectChange);
 }
 
 function closeMobileSidebar() {
@@ -316,16 +338,30 @@ function handleLogout() {
 }
 
 /**
- * Health & Dynamic Model List
+ * Health & Dynamic Model Management
  */
 async function checkEngineHealth() {
   try {
     const health = await API.getHealth();
-    if (health.ollama && health.ollama.models && health.ollama.models.length > 0) {
-      populateModelDropdown(health.ollama.models);
-    }
+    await loadAvailableModels();
   } catch (err) {
     console.error("Health check error:", err);
+  }
+}
+
+async function loadAvailableModels() {
+  try {
+    const data = await API.getModels();
+    state.modelsData = data.models || [];
+    populateModelDropdown(state.modelsData);
+
+    // Check pull status in case a download is active
+    if (data.pull_status && data.pull_status.status === "downloading") {
+      openPullModelModal();
+      startProgressPolling();
+    }
+  } catch (err) {
+    console.warn("Could not load dynamic models, using default:", err);
   }
 }
 
@@ -334,25 +370,169 @@ function populateModelDropdown(models) {
   const currentVal = DOM.modelSelect.value;
   DOM.modelSelect.innerHTML = "";
 
-  const allowed = [
-    { id: "ari-assistant-3b", label: "Ari 3B Assistant (Recommended)" },
-    { id: "ari-assistant-1.5b", label: "Ari 1.5B Assistant (Updated)" }
-  ];
+  const is3bInstalled = models.some(m => m.id === "ari-assistant-3b" && m.installed);
+  const is15bInstalled = models.some(m => m.id === "ari-assistant-1.5b" && m.installed);
 
-  allowed.forEach((item) => {
+  models.forEach((m) => {
     const opt = document.createElement("option");
-    opt.value = item.id;
-    opt.textContent = item.label;
-    if (currentVal === item.id) {
-      opt.selected = true;
-    } else if (!currentVal && item.id === "ari-assistant-3b") {
-      opt.selected = true;
+    opt.value = m.id;
+    let label = m.name;
+    if (m.installed) {
+      label += ` (${m.size_label} • Ready)`;
+    } else {
+      label += ` (${m.size_label} • Download Needed)`;
     }
+    opt.textContent = label;
     DOM.modelSelect.appendChild(opt);
   });
 
+  // Select 3B if installed, otherwise 1.5B
   if (currentVal && Array.from(DOM.modelSelect.options).some(o => o.value === currentVal)) {
     DOM.modelSelect.value = currentVal;
+  } else if (is3bInstalled) {
+    DOM.modelSelect.value = "ari-assistant-3b";
+  } else if (is15bInstalled) {
+    DOM.modelSelect.value = "ari-assistant-1.5b";
+  }
+
+  // Update header Pull button
+  if (DOM.pullModelBtn) {
+    if (!is3bInstalled) {
+      DOM.pullModelBtn.classList.remove("hidden");
+      if (DOM.pullModelBtnText) DOM.pullModelBtnText.textContent = "Pull Ari 3B (1.9 GB)";
+    } else {
+      DOM.pullModelBtn.classList.add("hidden");
+    }
+  }
+}
+
+async function handleModelSelectChange() {
+  const selectedModelId = DOM.modelSelect.value;
+  const modelInfo = state.modelsData.find(m => m.id === selectedModelId);
+
+  if (modelInfo && !modelInfo.installed) {
+    // Model not yet installed on disk! Prompt download
+    openPullModelModal(selectedModelId);
+    return;
+  }
+
+  // Model is installed: switch active engine
+  try {
+    await API.switchModel(selectedModelId);
+  } catch (err) {
+    console.error("Failed to switch model:", err);
+  }
+}
+
+function openPullModelModal(modelId = "ari-assistant-3b") {
+  if (!DOM.modelPullModal) return;
+  DOM.modelPullModal.classList.remove("hidden");
+}
+
+function closePullModelModal() {
+  if (!DOM.modelPullModal) return;
+  DOM.modelPullModal.classList.add("hidden");
+}
+
+async function handleStartPull() {
+  try {
+    DOM.startPullBtn.disabled = true;
+    DOM.startPullBtn.classList.add("opacity-50");
+    DOM.cancelPullBtn.classList.remove("hidden");
+    DOM.pullProgressSection.classList.remove("hidden");
+    DOM.pullStatusLabel.textContent = "Connecting to Hugging Face CDN...";
+
+    const res = await API.pullModel("ari-assistant-3b");
+    if (!res.ok && res.already_installed) {
+      DOM.pullStatusLabel.textContent = "Model already installed!";
+      setTimeout(() => {
+        closePullModelModal();
+        loadAvailableModels();
+      }, 1000);
+      return;
+    }
+
+    startProgressPolling();
+  } catch (err) {
+    DOM.pullStatusLabel.textContent = `Error: ${err.message || err}`;
+    DOM.startPullBtn.disabled = false;
+    DOM.startPullBtn.classList.remove("opacity-50");
+  }
+}
+
+function startProgressPolling() {
+  if (state.modelPullTimer) clearInterval(state.modelPullTimer);
+
+  DOM.pullProgressSection.classList.remove("hidden");
+  DOM.cancelPullBtn.classList.remove("hidden");
+  DOM.startPullBtn.classList.add("hidden");
+
+  state.modelPullTimer = setInterval(async () => {
+    try {
+      const status = await API.getPullStatus();
+      if (!status) return;
+
+      if (status.status === "downloading") {
+        const pct = status.percent || 0;
+        DOM.pullProgressBar.style.width = `${pct}%`;
+        DOM.pullPercentLabel.textContent = `${pct}%`;
+        const mbDone = Math.round(status.bytes_downloaded / (1024 * 1024));
+        const mbTotal = Math.round(status.total_bytes / (1024 * 1024));
+        DOM.pullBytesLabel.textContent = `${mbDone} MB / ${mbTotal} MB`;
+        DOM.pullSpeedLabel.textContent = `${status.speed_mbps || 0.0} MB/s`;
+
+        const eta = status.eta_seconds || 0;
+        if (eta > 60) {
+          DOM.pullEtaLabel.textContent = `ETA: ~${Math.ceil(eta / 60)} min remaining`;
+        } else if (eta > 0) {
+          DOM.pullEtaLabel.textContent = `ETA: ~${eta} sec remaining`;
+        } else {
+          DOM.pullEtaLabel.textContent = "Estimating speed...";
+        }
+        DOM.pullStatusLabel.textContent = "Streaming model weights...";
+      } else if (status.status === "completed") {
+        clearInterval(state.modelPullTimer);
+        state.modelPullTimer = null;
+        DOM.pullProgressBar.style.width = "100%";
+        DOM.pullPercentLabel.textContent = "100%";
+        DOM.pullStatusLabel.textContent = "Download complete! Initializing Ari 3B...";
+        DOM.pullEtaLabel.textContent = "Ready!";
+
+        setTimeout(async () => {
+          closePullModelModal();
+          DOM.startPullBtn.classList.remove("hidden");
+          DOM.startPullBtn.disabled = false;
+          DOM.startPullBtn.classList.remove("opacity-50");
+          DOM.cancelPullBtn.classList.add("hidden");
+          DOM.pullProgressSection.classList.add("hidden");
+          await loadAvailableModels();
+          // Switch to Ari 3B
+          if (DOM.modelSelect) {
+            DOM.modelSelect.value = "ari-assistant-3b";
+            await API.switchModel("ari-assistant-3b");
+          }
+        }, 1500);
+      } else if (status.status === "error" || status.status === "cancelled") {
+        clearInterval(state.modelPullTimer);
+        state.modelPullTimer = null;
+        DOM.pullStatusLabel.textContent = status.message || "Download stopped.";
+        DOM.startPullBtn.classList.remove("hidden");
+        DOM.startPullBtn.disabled = false;
+        DOM.startPullBtn.classList.remove("opacity-50");
+        DOM.cancelPullBtn.classList.add("hidden");
+      }
+    } catch (err) {
+      console.warn("Pull status poll error:", err);
+    }
+  }, 750);
+}
+
+async function handleCancelPull() {
+  try {
+    DOM.pullStatusLabel.textContent = "Cancelling...";
+    await API.cancelPull();
+  } catch (err) {
+    console.error("Cancel pull error:", err);
   }
 }
 

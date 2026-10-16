@@ -136,5 +136,34 @@ const API = {
   // Health
   async getHealth() {
     return this.request("/api/health");
+  },
+
+  // Model Management & Pulling
+  async getModels() {
+    return this.request("/api/models");
+  },
+
+  async pullModel(modelId = "ari-assistant-3b") {
+    return this.request("/api/models/pull", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId })
+    });
+  },
+
+  async getPullStatus() {
+    return this.request("/api/models/pull-status");
+  },
+
+  async cancelPull() {
+    return this.request("/api/models/cancel-pull", {
+      method: "POST"
+    });
+  },
+
+  async switchModel(modelId) {
+    return this.request("/api/models/switch", {
+      method: "POST",
+      body: JSON.stringify({ model_id: modelId })
+    });
   }
 };
