@@ -21,30 +21,36 @@ def get_models():
         "pull_status": pull_manager.get_status()
     }
 
-@router.post("/pull")
-def pull_model(req: PullRequest):
+@router.api_route("/pull", methods=["GET", "POST"])
+@router.api_route("/pull/", methods=["GET", "POST"])
+def pull_model(req: Optional[PullRequest] = None):
     """Initiates pulling a model from Hugging Face CDN in background."""
-    result = pull_manager.start_pull(req.model_id)
+    model_id = req.model_id if req and req.model_id else "ari-assistant-3b"
+    result = pull_manager.start_pull(model_id)
     return result
 
-@router.get("/pull-status")
+@router.api_route("/pull-status", methods=["GET"])
+@router.api_route("/pull-status/", methods=["GET"])
 def pull_status():
     """Returns real-time download progress, percentage, transfer speed, and ETA."""
     return pull_manager.get_status()
 
-@router.post("/cancel-pull")
+@router.api_route("/cancel-pull", methods=["GET", "POST"])
+@router.api_route("/cancel-pull/", methods=["GET", "POST"])
 def cancel_pull():
     """Cancels active background model download."""
     return pull_manager.cancel_pull()
 
-@router.post("/switch")
-def switch_model(req: SwitchRequest):
+@router.api_route("/switch", methods=["GET", "POST"])
+@router.api_route("/switch/", methods=["GET", "POST"])
+def switch_model(req: Optional[SwitchRequest] = None, model_id: Optional[str] = None):
     """Switches active embedded engine model if model file exists."""
-    target_path = get_model_file(req.model_id)
+    target_id = (req.model_id if req and req.model_id else None) or model_id or "ari-assistant-3b"
+    target_path = get_model_file(target_id)
     if not target_path or not target_path.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"Model file for {req.model_id} not found. Please pull it first."
+            detail=f"Model file for {target_id} not found. Please pull it first."
         )
     ok = start_standalone_engine(target_path)
-    return {"ok": ok, "model_id": req.model_id, "model_file": target_path.name}
+    return {"ok": ok, "model_id": target_id, "model_file": target_path.name}

@@ -13,7 +13,7 @@ from app.api.chat_routes import router as chat_router
 from app.api.memory_routes import router as memory_router
 from app.api.model_routes import router as model_router
 from app.api.system_routes import router as system_router
-from app.services.engine_service import check_engine_health, start_standalone_engine, stop_standalone_engine
+from app.services.engine_service import check_engine_health, start_standalone_engine, stop_standalone_engine, get_model_file
 
 app = FastAPI(
     title=PROJECT_NAME,
@@ -34,8 +34,8 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
-    # Auto-start standalone engine if files are present and no engine is active
-    start_standalone_engine()
+    # Auto-start standalone engine with Ari 3B model (or fallback to 1.5B)
+    start_standalone_engine(get_model_file("ari-assistant-3b"))
 
 @app.on_event("shutdown")
 def on_shutdown():
