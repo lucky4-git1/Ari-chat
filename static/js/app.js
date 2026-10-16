@@ -413,8 +413,10 @@ function populateModelDropdown(models) {
     DOM.modelSelect.appendChild(opt);
   });
 
-  // Select 3B if installed, otherwise 1.5B
-  if (currentVal && Array.from(DOM.modelSelect.options).some(o => o.value === currentVal)) {
+  // Default to 3B if installed, unless user explicitly selected another model
+  if (!state.userSelectedModel && is3bInstalled) {
+    DOM.modelSelect.value = "ari-assistant-3b";
+  } else if (currentVal && Array.from(DOM.modelSelect.options).some(o => o.value === currentVal)) {
     DOM.modelSelect.value = currentVal;
   } else if (is3bInstalled) {
     DOM.modelSelect.value = "ari-assistant-3b";
@@ -434,6 +436,7 @@ function populateModelDropdown(models) {
 }
 
 async function handleModelSelectChange() {
+  state.userSelectedModel = true;
   const selectedModelId = DOM.modelSelect.value;
   const modelInfo = state.modelsData.find(m => m.id === selectedModelId);
 

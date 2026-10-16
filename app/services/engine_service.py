@@ -116,12 +116,8 @@ def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
             "-t", "4",
             "-tb", "4",
             "-np", "1",
-            "--repeat-penalty", "1.25",
-            "--repeat-last-n", "256",
-            "--dry-multiplier", "0.8",
-            "--dry-base", "1.75",
-            "--dry-allowed-length", "2",
-            "--dry-penalty-last-n", "256",
+            "--repeat-penalty", "1.05",
+            "--repeat-last-n", "64",
             "--port", "8080",
             "--host", "127.0.0.1",
             "--temp", "0.7",
@@ -145,30 +141,29 @@ def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
         return False
 
 def stop_standalone_engine():
-    """Stops the standalone llama-server process if launched by this app."""
+    """Stops the standalone llama-server process and releases all port bindings."""
     global _ENGINE_PROCESS, _CURRENT_MODEL_PATH
     if _ENGINE_PROCESS is not None:
         logger.info("Shutting down standalone engine...")
         try:
             _ENGINE_PROCESS.terminate()
-            _ENGINE_PROCESS.wait(timeout=5)
-        except Exception as e:
-            logger.warning(f"Error terminating engine process: {e}")
+            _ENGINE_PROCESS.wait(timeout=2)
+        except Exception:
             try:
                 _ENGINE_PROCESS.kill()
             except Exception:
                 pass
         _ENGINE_PROCESS = None
 
-    # Also ensure port 8080 is released on Windows
+    # Guaranteed force kill of any lingering llama-server instances to free port 8080
     if sys.platform == "win32":
         try:
-            out = subprocess.check_output("netstat -ano | findstr :8080", shell=True, text=True)
-            for line in out.strip().splitlines():
-                parts = line.split()
-                if len(parts) >= 5 and "LISTENING" in parts:
-                    pid = parts[-1]
-                    subprocess.run(f"taskkill /F /PID {pid}", shell=True, capture_output=True)
+            subprocess.run(["taskkill", "/F", "/IM", "llama-server.exe"], capture_output=True)
+        except Exception:
+            pass
+    else:
+        try:
+            subprocess.run(["pkill", "-9", "-f", "llama-server"], capture_output=True)
         except Exception:
             pass
     _CURRENT_MODEL_PATH = None
@@ -596,13 +591,7 @@ async def _stream_standalone(
         "temperature": temperature,
         "top_p": 0.9,
         "top_k": 40,
-        "presence_penalty": 0.3,
-        "frequency_penalty": 0.3,
-        "repeat_penalty": 1.25,
-        "dry_multiplier": 0.8,
-        "dry_base": 1.75,
-        "dry_allowed_length": 2,
-        "dry_penalty_last_n": 256,
+        "repeat_penalty": 1.05,
         "max_tokens": max_tokens,
         "stop": STOP_WORDS,
         "stream": True
