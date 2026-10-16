@@ -1,9 +1,22 @@
 import os
+import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 DATA_DIR = BASE_DIR / "data"
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    test_f = DATA_DIR / ".write_test"
+    test_f.touch()
+    test_f.unlink()
+except Exception:
+    local_app_data = os.getenv("LOCALAPPDATA") or os.path.expanduser("~/.local/share")
+    DATA_DIR = Path(local_app_data) / "AriChat" / "data"
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 PROJECT_NAME = "Ari Chat"
 VERSION = "1.0.0"

@@ -8,10 +8,23 @@ import urllib.request
 import shutil
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys.executable).resolve().parent
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+
 BIN_DIR = BASE_DIR / "bin"
 MODELS_DIR = BASE_DIR / "models"
 DATA_DIR = BASE_DIR / "data"
+
+ALT_MODELS_DIRS = [
+    MODELS_DIR,
+    Path(sys.executable).resolve().parent / "models" if getattr(sys, "frozen", False) else MODELS_DIR,
+    Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "AriChat" / "models",
+    Path(os.environ.get("LOCALAPPDATA", "")) / "AriChat" / "models",
+    Path("C:/Program Files/AriChat/models"),
+    Path("C:/Program Files (x86)/AriChat/models"),
+]
 
 # llama.cpp release b11580 binaries across platforms
 LLAMA_RELEASES = {
@@ -124,16 +137,22 @@ def setup_binaries():
         return False
 
 def setup_model(model_name: str = "ari_assistant_1.5b.gguf", auto_download: bool = True):
-    """Ensures a specific model GGUF is available, checking local links or downloading if allowed."""
+    """Ensures a specific model GGUF is available, checking local paths or downloading if allowed."""
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     target_path = MODELS_DIR / model_name
     
-    if target_path.exists() and target_path.stat().st_size > 100 * 1024 * 1024:
-        mb = target_path.stat().st_size / (1024 * 1024)
-        print(f"[OK] Local model ready: {model_name} ({mb:.1f} MB)")
-        return True
+    # 1. Check primary and alternative model directories
+    for d in ALT_MODELS_DIRS:
+        try:
+            cand = d / model_name
+            if cand.exists() and cand.stat().st_size > 100 * 1024 * 1024:
+                mb = cand.stat().st_size / (1024 * 1024)
+                print(f"[OK] Local model ready at {cand} ({mb:.1f} MB)")
+                return True
+        except Exception:
+            pass
 
-    # Check common source locations in parent workspace
+    # 2. Check common source locations in parent workspace
     potential_sources = [
         BASE_DIR.parent / "artifacts" / "checkpoints" / model_name,
         BASE_DIR.parent / model_name,

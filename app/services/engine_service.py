@@ -25,21 +25,47 @@ _CURRENT_MODEL_PATH: Optional[Path] = None
 def get_engine_executable() -> Optional[Path]:
     """Returns the path to the standalone llama-server executable if present."""
     exe_name = "llama-server.exe" if sys.platform == "win32" else "llama-server"
-    exe_path = BIN_DIR / exe_name
-    return exe_path if exe_path.exists() else None
+    search_dirs = [
+        BIN_DIR,
+        Path(sys.executable).resolve().parent / "bin" if getattr(sys, "frozen", False) else BIN_DIR,
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "AriChat" / "bin",
+        Path("C:/Program Files/AriChat/bin"),
+        Path("C:/Program Files (x86)/AriChat/bin"),
+    ]
+    for d in search_dirs:
+        cand = d / exe_name
+        if cand.exists():
+            return cand
+    return None
+
+def find_model_on_disk(filename: str) -> Optional[Path]:
+    """Scans all possible model directory locations for the GGUF file."""
+    search_dirs = [
+        MODELS_DIR,
+        Path(sys.executable).resolve().parent / "models" if getattr(sys, "frozen", False) else MODELS_DIR,
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "AriChat" / "models",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "AriChat" / "models",
+        Path("C:/Program Files/AriChat/models"),
+        Path("C:/Program Files (x86)/AriChat/models"),
+        BASE_DIR.parent / "artifacts" / "checkpoints",
+        BASE_DIR.parent,
+    ]
+    for d in search_dirs:
+        try:
+            cand = d / filename
+            if cand.exists() and cand.stat().st_size > 100 * 1024 * 1024:
+                return cand
+        except Exception:
+            pass
+    return None
 
 def list_available_models() -> List[str]:
     """Scans models directory strictly for installed assistant GGUF models (3B and updated 1.5B only)."""
     models = []
-    # Always prioritize 3B first, then 1.5B
-    for expected in ["ari-assistant-3b", "ari-assistant-1.5b"]:
-        fname = expected.replace("-", "_") + ".gguf"
-        if (MODELS_DIR / fname).exists():
-            models.append(expected)
-        elif expected == "ari-assistant-1.5b":
-            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
-            if alt.exists():
-                models.append(expected)
+    if find_model_on_disk("ari_assistant_3b.gguf"):
+        models.append("ari-assistant-3b")
+    if find_model_on_disk("ari_assistant_1.5b.gguf"):
+        models.append("ari-assistant-1.5b")
     if not models:
         models = ["ari-assistant-3b", "ari-assistant-1.5b"]
     return models
@@ -49,32 +75,21 @@ def get_model_file(requested_model: Optional[str] = None) -> Optional[Path]:
     if requested_model:
         req = requested_model.lower().replace("-", "_")
         if "1.5b" in req:
-            target = MODELS_DIR / "ari_assistant_1.5b.gguf"
-            if target.exists():
-                return target
-            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
-            if alt.exists():
-                return alt
+            m = find_model_on_disk("ari_assistant_1.5b.gguf")
+            if m:
+                return m
         elif "3b" in req:
-            target = MODELS_DIR / "ari_assistant_3b.gguf"
-            if target.exists():
-                return target
-            alt = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_3b.gguf"
-            if alt.exists():
-                return alt
+            m = find_model_on_disk("ari_assistant_3b.gguf")
+            if m:
+                return m
 
     # Default preference: 3B first, then 1.5B
-    p3b = MODELS_DIR / "ari_assistant_3b.gguf"
-    if p3b.exists():
-        return p3b
-    p15b = MODELS_DIR / "ari_assistant_1.5b.gguf"
-    if p15b.exists():
-        return p15b
-    if DEFAULT_GGUF_PATH.exists():
-        return DEFAULT_GGUF_PATH
-    alt_path = BASE_DIR.parent / "artifacts" / "checkpoints" / "ari_assistant_1.5b.gguf"
-    if alt_path.exists():
-        return alt_path
+    m3b = find_model_on_disk("ari_assistant_3b.gguf")
+    if m3b:
+        return m3b
+    m15b = find_model_on_disk("ari_assistant_1.5b.gguf")
+    if m15b:
+        return m15b
     return None
 
 def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
