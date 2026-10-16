@@ -36,6 +36,8 @@ a = Analysis(
         'ddgs',
         'app.api.model_routes',
         'app.services.model_manager',
+        'app.api.system_routes',
+        'app.services.updater_service',
     ],
     hookspath=[],
     hooksconfig={},

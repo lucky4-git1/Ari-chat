@@ -36,8 +36,8 @@ def get_github_token() -> str:
     raise RuntimeError("Could not find GitHub token from git credentials or environment!")
 
 def build_windows_installer() -> Path:
-    """Compiles AriChat-Setup-v1.0.0.exe using Inno Setup Compiler (ISCC.exe) if not already built."""
-    installer_path = RELEASE_DIR / "AriChat-Setup-v1.0.0.exe"
+    """Compiles AriChat-Setup-v1.0.1.exe using Inno Setup Compiler (ISCC.exe) if not already built."""
+    installer_path = RELEASE_DIR / "AriChat-Setup-v1.0.1.exe"
     if installer_path.exists() and installer_path.stat().st_size > 500 * 1024 * 1024:
         print(f"[i] Using existing Windows Installer: {installer_path.name} ({installer_path.stat().st_size / (1024*1024):.1f} MB)")
         return installer_path
@@ -61,7 +61,7 @@ def build_windows_installer() -> Path:
     print(f"[*] Compiling Windows installer using Inno Setup ({iscc_exe})...")
     subprocess.run([str(iscc_exe), str(iss_file)], check=True, cwd=str(APP_DIR))
     
-    installer_path = RELEASE_DIR / "AriChat-Setup-v1.0.0.exe"
+    installer_path = RELEASE_DIR / "AriChat-Setup-v1.0.1.exe"
     if not installer_path.exists():
         raise FileNotFoundError(f"Installer not found at {installer_path}")
     
@@ -70,7 +70,7 @@ def build_windows_installer() -> Path:
 
 def create_windows_package():
     """Packages complete standalone Windows zip release with pre-installed Ari-1.5B model & embedded engine."""
-    zip_path = RELEASE_DIR / "AriChat-v1.0.0-Windows.zip"
+    zip_path = RELEASE_DIR / "AriChat-v1.0.1-Windows.zip"
     print(f"[*] Creating {zip_path.name}...")
     
     exe_path = DIST_DIR / "AriChat.exe"
@@ -123,7 +123,7 @@ def create_windows_package():
 
 def create_crossplatform_package():
     """Packages lightweight universal package for macOS, Linux, and Android."""
-    zip_path = RELEASE_DIR / "AriChat-v1.0.0-CrossPlatform.zip"
+    zip_path = RELEASE_DIR / "AriChat-v1.0.1-CrossPlatform.zip"
     print(f"[*] Creating {zip_path.name}...")
     
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -201,7 +201,7 @@ def upload_release_asset(upload_url_template: str, token: str, file_path: Path):
         print(f"[OK] Uploaded {file_path.name}! Download URL: {res.get('browser_download_url')}")
         return res
 
-def publish_release(repo: str = "lucky4-git1/Ari-chat", tag: str = "v1.0.0"):
+def publish_release(repo: str = "lucky4-git1/Ari-chat", tag: str = "v1.0.1"):
     token = get_github_token()
     print(f"[*] Authenticated with GitHub for repo {repo}")
     
@@ -220,18 +220,16 @@ def publish_release(repo: str = "lucky4-git1/Ari-chat", tag: str = "v1.0.0"):
         if e.code != 404:
             raise
 
-    release_body = """# Ari Chat Application v1.0.0 — Standalone AI Companion
+    release_body = """# Ari Chat Application v1.0.1 — Standalone AI Companion
 
 A production-ready, zero-setup, fully offline AI assistant powered natively by **Ari-1.5B** and **Ari-3B**.
 
-### ✨ Highlights
-- **New Windows Installer (`AriChat-Setup-v1.0.0.exe`):** Official Windows Setup Wizard with Desktop shortcut, Start Menu shortcut, and automatic setup.
-- **In-App Pulling for Ari 3B:** One-click pull button inside the chat interface to stream and install **Ari-3B (1.93 GB)** directly from Hugging Face CDN with real-time download progress, speed, and ETA!
-- **No Ollama Required:** Runs an embedded llama neural engine directly within the application.
-- **Pre-installed Ari-1.5B:** Comes pre-packaged with the latest 1.5B model ready for instant offline conversations.
-- **Dual Model Architecture:** Easily switch between **Ari 1.5B** (Fast & Lightweight, 986 MB) and **Ari 3B** (High-Precision Reasoning & Multi-turn Assistant, 1.93 GB).
-- **Zero-Dependency Portable:** Extract and launch with 1-click on Windows (`AriChat.exe` or `start.bat`), macOS/Linux (`./start.sh`), or Android (`./start-android.sh`).
-- **Cross-Device Mobile Web UI:** Automatically exposes the modern ChatGPT-style responsive interface across your local Wi-Fi LAN (`http://<PC-IP>:8000`). Connect seamlessly from any Android or iOS device!
+### ✨ What's New in v1.0.1
+- 🚀 **Generation Stability Fix:** Fixed premature token stream truncation and resolved HTTP 503 engine weight warmup handling. Offline chatting streams reliably and cleanly without cuts.
+- 🔄 **In-App Auto-Updater:** Ari Chat now automatically checks for new updates on launch. When a new version is released, an update banner appears with one-click download & background installer upgrade without having to manually hunt on GitHub!
+- 🧠 **Autonomous Long-Term Memory:** Ari now autonomously extracts user preferences, technical stacks, names, and explicit instructions straight from conversation turns and injects relevant context into future chats.
+- 📥 **Dedicated Ari 3B Model Puller:** Prominent "Pull Ari 3B" button added directly into the top navigation bar and model switcher. Downloads Ari 3B (1.93 GB) with real-time speed, bytes progress, and automatic registration.
+- 🛠️ **Multi-Path Model Discovery:** Models in user directory, application install root (`%LOCALAPPDATA%\\Programs\\AriChat\\models`), or portable folders are automatically discovered and shared.
 
 ---
 
@@ -239,9 +237,9 @@ A production-ready, zero-setup, fully offline AI assistant powered natively by *
 
 | Package | Platform | Type | Details |
 | :--- | :--- | :--- | :--- |
-| **`AriChat-Setup-v1.0.0.exe`** | Windows 10/11 (x64) | **Windows Installer** | **Recommended:** Complete Setup Wizard with Desktop shortcut, Start Menu entry, embedded llama engine, and pre-installed `ari_assistant_1.5b.gguf`. |
-| **`AriChat-v1.0.0-Windows.zip`** | Windows 10/11 (x64) | **Portable Archive** | Extract anywhere and run `AriChat.exe` or `start.bat` without installation. |
-| **`AriChat-v1.0.0-CrossPlatform.zip`** | macOS, Linux, Android | **Universal Package** | Run `./start.sh` or `./start-android.sh`. Automatically fetches platform binaries and models. |
+| **`AriChat-Setup-v1.0.1.exe`** | Windows 10/11 (x64) | **Windows Installer** | **Recommended:** Complete Setup Wizard with Desktop shortcut, Start Menu entry, embedded llama engine, and pre-installed `ari_assistant_1.5b.gguf`. |
+| **`AriChat-v1.0.1-Windows.zip`** | Windows 10/11 (x64) | **Portable Archive** | Extract anywhere and run `AriChat.exe` or `start.bat` without installation. |
+| **`AriChat-v1.0.1-CrossPlatform.zip`** | macOS, Linux, Android | **Universal Package** | Run `./start.sh` or `./start-android.sh`. Automatically fetches platform binaries and models. |
 
 ---
 
@@ -255,11 +253,11 @@ You can pull **Ari 3B** directly from inside the Ari Chat application, or downlo
 ### 🚀 Getting Started
 
 #### Windows (Installer Wizard)
-1. Download and run **`AriChat-Setup-v1.0.0.exe`**.
+1. Download and run **`AriChat-Setup-v1.0.1.exe`**.
 2. Follow the setup wizard and launch **Ari Chat** from your Desktop or Start Menu!
 
 #### macOS / Linux
-1. Download and extract **`AriChat-v1.0.0-CrossPlatform.zip`**.
+1. Download and extract **`AriChat-v1.0.1-CrossPlatform.zip`**.
 2. Run in terminal:
    ```bash
    chmod +x start.sh
@@ -290,7 +288,7 @@ Open that URL in your mobile browser to chat privately with your local Ari LLM!
         create_payload = {
             "tag_name": tag,
             "target_commitish": "main",
-            "name": "Ari Chat Application v1.0.0 — Standalone AI Companion",
+            "name": "Ari Chat Application v1.0.1 — Standalone AI Companion",
             "body": release_body,
             "draft": False,
             "prerelease": False

@@ -165,5 +165,32 @@ const API = {
       method: "POST",
       body: JSON.stringify({ model_id: modelId })
     });
+  },
+
+  // Auto-Updater Endpoints
+  async checkUpdate() {
+    return this.request("/api/system/update/check");
+  },
+
+  async startUpdate() {
+    return this.request("/api/system/update/download", {
+      method: "POST"
+    });
+  },
+
+  async getUpdateStatus() {
+    return this.request("/api/system/update/status");
+  },
+
+  async cancelUpdate() {
+    return this.request("/api/system/update/cancel", {
+      method: "POST"
+    });
+  },
+
+  async applyUpdate() {
+    return this.request("/api/system/update/apply", {
+      method: "POST"
+    });
   }
 };

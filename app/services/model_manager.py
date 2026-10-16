@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 from app.core.config import BASE_DIR
-from app.services.engine_service import MODELS_DIR, start_standalone_engine, stop_standalone_engine
+from app.services.engine_service import MODELS_DIR, find_model_on_disk, start_standalone_engine, stop_standalone_engine
 
 MODEL_CATALOG = {
     "ari-assistant-3b": {
@@ -57,7 +57,7 @@ class ModelPullManager:
     def list_models(self) -> list:
         models = []
         for m_id, info in MODEL_CATALOG.items():
-            model_file = MODELS_DIR / info["filename"]
+            model_file = find_model_on_disk(info["filename"]) or (MODELS_DIR / info["filename"])
             installed = model_file.exists() and model_file.stat().st_size > 10 * 1024 * 1024
             actual_size = model_file.stat().st_size if installed else 0
             models.append({
@@ -85,7 +85,7 @@ class ModelPullManager:
                 return {"ok": False, "message": f"Unknown model id: {model_id}"}
 
             info = MODEL_CATALOG[model_id]
-            target_file = MODELS_DIR / info["filename"]
+            target_file = find_model_on_disk(info["filename"]) or (MODELS_DIR / info["filename"])
             if target_file.exists() and target_file.stat().st_size > 10 * 1024 * 1024:
                 return {
                     "ok": True,

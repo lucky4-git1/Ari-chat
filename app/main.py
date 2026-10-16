@@ -12,6 +12,7 @@ from app.api.auth_routes import router as auth_router
 from app.api.chat_routes import router as chat_router
 from app.api.memory_routes import router as memory_router
 from app.api.model_routes import router as model_router
+from app.api.system_routes import router as system_router
 from app.services.engine_service import check_engine_health, start_standalone_engine, stop_standalone_engine
 
 app = FastAPI(
@@ -45,6 +46,7 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(memory_router)
 app.include_router(model_router)
+app.include_router(system_router)
 
 @app.get("/api/health")
 async def health_check():

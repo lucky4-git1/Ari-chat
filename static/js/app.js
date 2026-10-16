@@ -42,8 +42,27 @@ const DOM = {
   conversationsList: document.getElementById("conversations-list"),
   userName: document.getElementById("user-name"),
   userAvatar: document.getElementById("user-avatar"),
-  logoutBtn: document.getElementById("logout-btn"),
   memoryModalBtn: document.getElementById("memory-modal-btn"),
+  sidebarUpdateBtn: document.getElementById("sidebar-update-btn"),
+  sidebarUpdateDot: document.getElementById("sidebar-update-dot"),
+
+  // Auto-Updater
+  updateBannerBtn: document.getElementById("update-banner-btn"),
+  updateBannerText: document.getElementById("update-banner-text"),
+  updateModal: document.getElementById("update-modal"),
+  closeUpdateModalBtn: document.getElementById("close-update-modal-btn"),
+  updateModalTitle: document.getElementById("update-modal-title"),
+  updateModalSubtitle: document.getElementById("update-modal-subtitle"),
+  updateNotesText: document.getElementById("update-notes-text"),
+  updateProgressSection: document.getElementById("update-progress-section"),
+  updateStatusLabel: document.getElementById("update-status-label"),
+  updatePercentLabel: document.getElementById("update-percent-label"),
+  updateProgressBar: document.getElementById("update-progress-bar"),
+  updateSpeedLabel: document.getElementById("update-speed-label"),
+  updateEtaLabel: document.getElementById("update-eta-label"),
+  startUpdateBtn: document.getElementById("start-update-btn"),
+  cancelUpdateBtn: document.getElementById("cancel-update-btn"),
+  applyUpdateBtn: document.getElementById("apply-update-btn"),
 
   // Chat Area
   chatTitle: document.getElementById("chat-title"),
@@ -94,7 +113,9 @@ const DOM = {
 document.addEventListener("DOMContentLoaded", async () => {
   initTheme();
   setupEventListeners();
+  loadAvailableModels();
   checkEngineHealth();
+  checkAppUpdates(true);
   await checkAuth();
 });
 
@@ -226,11 +247,19 @@ function setupEventListeners() {
   DOM.clearAllMemoriesBtn?.addEventListener("click", handleClearMemories);
 
   // Model Pull Listeners
-  DOM.pullModelBtn?.addEventListener("click", openPullModelModal);
+  DOM.pullModelBtn?.addEventListener("click", () => openPullModelModal("ari-assistant-3b"));
   DOM.closePullModalBtn?.addEventListener("click", closePullModelModal);
   DOM.startPullBtn?.addEventListener("click", handleStartPull);
   DOM.cancelPullBtn?.addEventListener("click", handleCancelPull);
   DOM.modelSelect?.addEventListener("change", handleModelSelectChange);
+
+  // Auto-Updater Listeners
+  DOM.updateBannerBtn?.addEventListener("click", openUpdateModal);
+  DOM.sidebarUpdateBtn?.addEventListener("click", () => checkAppUpdates(false));
+  DOM.closeUpdateModalBtn?.addEventListener("click", closeUpdateModal);
+  DOM.startUpdateBtn?.addEventListener("click", handleStartUpdate);
+  DOM.cancelUpdateBtn?.addEventListener("click", handleCancelUpdate);
+  DOM.applyUpdateBtn?.addEventListener("click", handleApplyUpdate);
 }
 
 function closeMobileSidebar() {
@@ -408,9 +437,11 @@ async function handleModelSelectChange() {
   const selectedModelId = DOM.modelSelect.value;
   const modelInfo = state.modelsData.find(m => m.id === selectedModelId);
 
-  if (modelInfo && !modelInfo.installed) {
-    // Model not yet installed on disk! Prompt download
+  if (selectedModelId === "ari-assistant-3b" && (!modelInfo || !modelInfo.installed)) {
+    // Model not yet installed on disk! Prompt download modal immediately
     openPullModelModal(selectedModelId);
+    // Keep dropdown on currently installed model until download completes
+    DOM.modelSelect.value = "ari-assistant-1.5b";
     return;
   }
 
@@ -866,13 +897,6 @@ async function handleSendMessage(e) {
                 }
               } else {
                 fullResponse += tok;
-                // Live repetition guard
-                const repCheck = stripClientRepeats(fullResponse);
-                if (repCheck !== fullResponse) {
-                  fullResponse = repCheck;
-                  bodyEl.innerHTML = marked.parse(fullResponse);
-                  break; // terminate loop
-                }
                 bodyEl.innerHTML = marked.parse(fullResponse) + `<span class="cursor-blink"></span>`;
               }
               scrollToBottom();
@@ -1248,12 +1272,10 @@ function stripClientRepeats(text) {
 
   // Cut at simulated turns or hallucinated user prompts
   const simTurnPatterns = [
-    /\n(?:User|Human|Prompt):\s*/i,
+    /\n(?:User|Human|Question):\s*/i,
     /\n###\s*(?:User|Human|Prompt)/i,
-    /\n(?:hi\b|hello\b|hey\b).*?\?/i,
-    /\n(?:what are u|what are you|who are you)\b/i,
-    /\n(?:hi i am|hello i am)\b/i,
-    /\nI'm Ari\b/i
+    /<\|im_start\|>/i,
+    /<\|im_end\|>/i
   ];
   for (const pat of simTurnPatterns) {
     const m = cleaned.slice(20).search(pat);
@@ -1262,13 +1284,13 @@ function stripClientRepeats(text) {
     }
   }
 
-  // Universal paragraph deduplication: truncate before the first duplicate paragraph
+  // Universal paragraph deduplication
   const paras = cleaned.split("\n");
   const seenParas = new Set();
   const keptParas = [];
   for (const p of paras) {
     const pClean = p.trim();
-    if (pClean.length >= 30) {
+    if (pClean.length >= 35) {
       const norm = pClean.replace(/[^\w\s]/g, "").toLowerCase();
       if (seenParas.has(norm)) {
         break;
@@ -1279,26 +1301,9 @@ function stripClientRepeats(text) {
   }
   cleaned = keptParas.join("\n");
 
-  // Universal sentence deduplication: truncate before the first duplicate sentence
-  const sents = cleaned.split(/(?<=[.!?])\s+/);
-  const seenSents = new Set();
-  const keptSents = [];
-  for (const s of sents) {
-    const sClean = s.trim();
-    if (sClean.length >= 25) {
-      const norm = sClean.replace(/[^\w\s]/g, "").toLowerCase();
-      if (seenSents.has(norm)) {
-        break;
-      }
-      seenSents.add(norm);
-    }
-    keptSents.push(s);
-  }
-  cleaned = keptSents.join(" ");
-
-  // Strip cyclical loops
-  if (cleaned.length >= 6) {
-    for (let l = 2; l <= 50; l++) {
+  // Strip cyclical loops (loops >= 3 chars repeated 3+ times at end)
+  if (cleaned.length >= 12) {
+    for (let l = 3; l <= 50; l++) {
       if (cleaned.length >= l * 3) {
         const pat = cleaned.slice(-l);
         if (!pat.trim() || !/[a-zA-Z0-9]/.test(pat)) {
@@ -1314,5 +1319,164 @@ function stripClientRepeats(text) {
     }
   }
   return cleaned.trim();
+}
+
+/**
+ * Auto-Updater Client Logic
+ */
+async function checkAppUpdates(silent = true) {
+  try {
+    const res = await API.checkUpdate();
+    state.updateData = res;
+    if (res && res.update_available) {
+      // Show navbar update banner
+      if (DOM.updateBannerBtn) {
+        DOM.updateBannerBtn.classList.remove("hidden");
+        if (DOM.updateBannerText) {
+          DOM.updateBannerText.textContent = `Update v${res.latest_version}`;
+        }
+      }
+      if (DOM.sidebarUpdateDot) {
+        DOM.sidebarUpdateDot.classList.remove("hidden");
+      }
+      if (!silent) {
+        openUpdateModal();
+      }
+    } else {
+      if (!silent) {
+        alert(`You're up to date! Ari Chat v${res.current_version || "1.0.0"} is the latest version.`);
+      }
+      if (DOM.sidebarUpdateDot) {
+        DOM.sidebarUpdateDot.classList.add("hidden");
+      }
+    }
+  } catch (err) {
+    if (!silent) {
+      alert(`Could not check for updates: ${err.message || err}`);
+    }
+  }
+}
+
+function openUpdateModal() {
+  if (!DOM.updateModal) return;
+  DOM.updateModal.classList.remove("hidden");
+
+  const data = state.updateData || {};
+  if (DOM.updateModalTitle) {
+    DOM.updateModalTitle.textContent = data.release_title || `Ari Chat Update`;
+  }
+  if (DOM.updateModalSubtitle) {
+    DOM.updateModalSubtitle.textContent = `Version ${data.latest_version || "Latest"} is available`;
+  }
+  if (DOM.updateNotesText) {
+    DOM.updateNotesText.textContent = data.release_notes || "Includes performance enhancements and fixes.";
+  }
+}
+
+function closeUpdateModal() {
+  if (!DOM.updateModal) return;
+  DOM.updateModal.classList.add("hidden");
+}
+
+async function handleStartUpdate() {
+  try {
+    DOM.startUpdateBtn.disabled = true;
+    DOM.startUpdateBtn.classList.add("opacity-50");
+    DOM.cancelUpdateBtn.classList.remove("hidden");
+    DOM.updateProgressSection.classList.remove("hidden");
+    DOM.updateStatusLabel.textContent = "Connecting to GitHub Releases...";
+
+    const res = await API.startUpdate();
+    if (!res.ok) {
+      throw new Error(res.message || "Could not start download");
+    }
+
+    startUpdatePolling();
+  } catch (err) {
+    DOM.updateStatusLabel.textContent = `Error: ${err.message || err}`;
+    DOM.startUpdateBtn.disabled = false;
+    DOM.startUpdateBtn.classList.remove("opacity-50");
+  }
+}
+
+function startUpdatePolling() {
+  if (state.updatePollingInterval) clearInterval(state.updatePollingInterval);
+
+  DOM.updateProgressSection.classList.remove("hidden");
+  DOM.cancelUpdateBtn.classList.remove("hidden");
+  DOM.startUpdateBtn.classList.add("hidden");
+
+  state.updatePollingInterval = setInterval(async () => {
+    try {
+      const status = await API.getUpdateStatus();
+      if (!status) return;
+
+      if (status.status === "downloading") {
+        const pct = status.percent || 0;
+        DOM.updateProgressBar.style.width = `${pct}%`;
+        DOM.updatePercentLabel.textContent = `${pct}%`;
+        DOM.updateSpeedLabel.textContent = `${status.speed_mbps || 0.0} MB/s`;
+
+        const eta = status.eta_seconds || 0;
+        if (eta > 60) {
+          DOM.updateEtaLabel.textContent = `ETA: ~${Math.ceil(eta / 60)} min`;
+        } else if (eta > 0) {
+          DOM.updateEtaLabel.textContent = `ETA: ~${eta} sec`;
+        } else {
+          DOM.updateEtaLabel.textContent = "Estimating speed...";
+        }
+        DOM.updateStatusLabel.textContent = "Downloading installer...";
+      } else if (status.status === "ready_to_install") {
+        clearInterval(state.updatePollingInterval);
+        state.updatePollingInterval = null;
+
+        DOM.updateProgressBar.style.width = "100%";
+        DOM.updatePercentLabel.textContent = "100%";
+        DOM.updateStatusLabel.textContent = "Update downloaded! Ready to install.";
+        DOM.updateEtaLabel.textContent = "Ready!";
+
+        DOM.cancelUpdateBtn.classList.add("hidden");
+        DOM.applyUpdateBtn.classList.remove("hidden");
+      } else if (status.status === "error") {
+        clearInterval(state.updatePollingInterval);
+        state.updatePollingInterval = null;
+        DOM.updateStatusLabel.textContent = status.message || "Download failed.";
+        DOM.startUpdateBtn.classList.remove("hidden");
+        DOM.startUpdateBtn.disabled = false;
+        DOM.startUpdateBtn.classList.remove("opacity-50");
+      }
+    } catch (e) {
+      console.warn("Update status polling error:", e);
+    }
+  }, 800);
+}
+
+async function handleCancelUpdate() {
+  try {
+    await API.cancelUpdate();
+    if (state.updatePollingInterval) {
+      clearInterval(state.updatePollingInterval);
+      state.updatePollingInterval = null;
+    }
+    DOM.updateProgressSection.classList.add("hidden");
+    DOM.cancelUpdateBtn.classList.add("hidden");
+    DOM.startUpdateBtn.classList.remove("hidden");
+    DOM.startUpdateBtn.disabled = false;
+    DOM.startUpdateBtn.classList.remove("opacity-50");
+  } catch (err) {
+    console.error("Failed to cancel update:", err);
+  }
+}
+
+async function handleApplyUpdate() {
+  try {
+    DOM.applyUpdateBtn.disabled = true;
+    DOM.applyUpdateBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Restarting...`;
+    await API.applyUpdate();
+  } catch (err) {
+    alert("Error applying update: " + (err.message || err));
+    DOM.applyUpdateBtn.disabled = false;
+    DOM.applyUpdateBtn.textContent = "Restart & Apply Update";
+  }
 }
 

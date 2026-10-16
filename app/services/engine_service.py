@@ -71,26 +71,18 @@ def list_available_models() -> List[str]:
     return models
 
 def get_model_file(requested_model: Optional[str] = None) -> Optional[Path]:
-    """Locates the GGUF model file for the requested model (1.5B or 3B), defaulting to 3B then 1.5B."""
+    """Locates the GGUF model file for the requested model (1.5B or 3B), falling back gracefully."""
+    m15b = find_model_on_disk("ari_assistant_1.5b.gguf")
+    m3b = find_model_on_disk("ari_assistant_3b.gguf")
+
     if requested_model:
         req = requested_model.lower().replace("-", "_")
-        if "1.5b" in req:
-            m = find_model_on_disk("ari_assistant_1.5b.gguf")
-            if m:
-                return m
-        elif "3b" in req:
-            m = find_model_on_disk("ari_assistant_3b.gguf")
-            if m:
-                return m
+        if "3b" in req:
+            return m3b or m15b
+        elif "1.5b" in req:
+            return m15b or m3b
 
-    # Default preference: 3B first, then 1.5B
-    m3b = find_model_on_disk("ari_assistant_3b.gguf")
-    if m3b:
-        return m3b
-    m15b = find_model_on_disk("ari_assistant_1.5b.gguf")
-    if m15b:
-        return m15b
-    return None
+    return m3b or m15b
 
 def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
     """Launches llama-server in background with the designated assistant model."""
@@ -182,32 +174,48 @@ def stop_standalone_engine():
     _CURRENT_MODEL_PATH = None
 
 async def ensure_standalone_engine(model_name: Optional[str] = None) -> bool:
-    """Ensures standalone llama-server is running with the requested assistant model."""
+    """Ensures standalone llama-server is running and ready with the designated assistant model."""
     target_path = get_model_file(model_name)
-    if not target_path:
-        return False
+    if not target_path or not target_path.exists():
+        target_path = get_model_file()
+        if not target_path or not target_path.exists():
+            return False
 
-    # Check if engine is running and which model is loaded
+    # 1. Check if engine is running and responding
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            res = await client.get(f"{STANDALONE_BASE_URL}/props")
+            res = await client.get(f"{STANDALONE_BASE_URL}/health")
             if res.status_code == 200:
-                current_alias = res.json().get("model_alias", "")
-                if current_alias and Path(current_alias).resolve() == target_path.resolve():
-                    return True
-                # Different model loaded: restart with target model
-                logger.info(f"Model switch detected: running={current_alias}, requested={target_path}")
-                stop_standalone_engine()
-                await asyncio.sleep(0.5)
+                # Engine is healthy and ready. Check if loaded model matches target
+                props_res = await client.get(f"{STANDALONE_BASE_URL}/props")
+                if props_res.status_code == 200:
+                    current_alias = props_res.json().get("model_alias", "")
+                    if current_alias and Path(current_alias).resolve() == target_path.resolve():
+                        return True
+                    # Different model requested: switch model
+                    logger.info(f"Model switch detected: running={current_alias}, requested={target_path}")
+                    stop_standalone_engine()
+                    await asyncio.sleep(0.5)
+            elif res.status_code == 503:
+                # Engine is currently initializing / loading weights - wait for it!
+                logger.info("Engine is loading model. Waiting for readiness...")
+                for _ in range(30):
+                    await asyncio.sleep(0.5)
+                    try:
+                        h = await client.get(f"{STANDALONE_BASE_URL}/health")
+                        if h.status_code == 200:
+                            return True
+                    except Exception:
+                        pass
     except Exception:
         pass
 
-    # Launch engine with target model
+    # 2. Launch engine with target model if not already up
     if not start_standalone_engine(target_path):
         return False
 
-    # Wait up to 10 seconds for engine to be ready
-    for _ in range(20):
+    # 3. Wait up to 20 seconds for engine /health to become 200
+    for _ in range(40):
         await asyncio.sleep(0.5)
         try:
             async with httpx.AsyncClient(timeout=1.0) as client:
@@ -314,37 +322,27 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
     return None
 
 def detect_simulated_turn(text: str) -> bool:
-    """Detects if text contains simulated human messages, re-introductions, tool tags, or conversational turn transitions."""
-    if len(text) < 25:
+    """Detects if text contains simulated human messages, user prompt tags, or multi-turn conversational leakage."""
+    if len(text) < 40:
         return False
 
     in_code = (text.count("```") % 2 == 1)
+    if in_code:
+        return False
 
     patterns = [
         r'</tool_call>',
         r'<tool_call>',
         r'</tool_response>',
         r'<tool_response>',
-        r'\n(?:User|Human|Question|Prompt):\s*',
+        r'\n(?:User|Human|Question):\s*',
         r'\n###\s*(?:User|Human|Prompt)',
+        r'<\|im_start\|>',
+        r'<\|im_end\|>',
     ]
-
-    if not in_code:
-        patterns.extend([
-            r'(?:What can I do for you today\?|How may I assist you today\?|How can I help you today\?|What\'s on your mind\?)\s*\n\s*\S',
-            r'Let\'s chat!\s*\n\s*\S',
-            r'\n\n[A-Z][a-z0-9\s,\'\"\-]{2,50}\?\s*\n',
-            r'\n(?:hi\b|hello\b|hey\b).*?\?',
-            r'\n(?:what are u|what are you|who are you|how are you)\b',
-            r'\n(?:hi i am|hello i am|i am [a-z]+)\b',
-            r'\nI\'m Ari\b',
-            r'\n(?:Sure thing|Of course|Certainly)[,\-!.]\s+(?:what|how|let)\b',
-            r'note to self',
-            r'\?\('
-        ])
     for p in patterns:
         m = re.search(p, text, re.IGNORECASE)
-        if m and m.start() > 10:
+        if m and m.start() > 20:
             return True
     return False
 
@@ -453,15 +451,10 @@ def clean_response_text(text: str) -> str:
         r'<tool_call>',
         r'</tool_response>',
         r'<tool_response>',
-        r'\n(?:User|Human|Question|Prompt):\s*',
+        r'\n(?:User|Human|Question):\s*',
         r'\n###\s*(?:User|Human|Prompt)',
-        r'\n(?:hi\b|hello\b|hey\b).*?\?',
-        r'\n(?:what are u|what are you|who are you|how are you)\b',
-        r'\n(?:hi i am|hello i am|i am [a-z]+)\b',
-        r'Let\'s chat!\s*\n',
-        r'What\'s on your mind\?\s*Let\'s chat!\s*\n',
-        r'\n(?:Sure thing|Of course|Certainly)[,\-!.]\s+(?:what|how|let)\b',
-        r'\n\n[A-Z][a-z0-9\s,\'\"\-]{2,50}\?\s*\n'
+        r'<\|im_start\|>',
+        r'<\|im_end\|>',
     ]
     for sim in simulated_turns:
         m = re.search(sim, text, re.IGNORECASE)
@@ -554,9 +547,6 @@ STOP_WORDS = [
     "\n### Human",
     "\n<|im_start|>user",
     "\n<|im_start|>assistant",
-    "\nhi i am",
-    "\nhello i am",
-    "Let's chat!\n",
 ]
 
 async def stream_chat_completion(
@@ -647,8 +637,8 @@ async def _stream_standalone(
                             done = finish_reason is not None
 
                             if content:
-                                # Clean control characters and check stop sequences
-                                clean_tok = re.sub(r'[^\x20-\x7E\r\n\t]+', '', content)
+                                # Clean control characters (preserve UTF-8, emojis, accented chars)
+                                clean_tok = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]+', '', content)
                                 accumulated += clean_tok
 
                                 for stop_tok in STOP_WORDS:

@@ -94,6 +94,10 @@
         </div>
       </div>
       <div class="flex items-center gap-1 text-zinc-400">
+        <button id="sidebar-update-btn" title="Check for Updates" class="p-1.5 hover:text-amber-400 rounded-md transition-colors relative">
+          <i class="fa-solid fa-arrows-rotate text-xs"></i>
+          <span id="sidebar-update-dot" class="w-2 h-2 rounded-full bg-amber-400 absolute top-0.5 right-0.5 hidden"></span>
+        </button>
         <button id="memory-modal-btn" title="View Memories" class="p-1.5 hover:text-current rounded-md transition-colors">
           <i class="fa-solid fa-fingerprint text-xs"></i>
         </button>
@@ -117,15 +121,15 @@
         <div class="flex items-center gap-2">
           <div class="relative">
             <select id="model-select" class="text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none">
-              <option value="ari-assistant-3b">Ari 3B Assistant (Recommended)</option>
-              <option value="ari-assistant-1.5b" selected>Ari 1.5B Assistant (Fast)</option>
+              <option value="ari-assistant-1.5b" selected>Ari 1.5B Assistant (Ready • Fast)</option>
+              <option value="ari-assistant-3b">Ari 3B Assistant (1.9 GB • Download)</option>
             </select>
             <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
               <i class="fa-solid fa-chevron-down"></i>
             </div>
           </div>
 
-          <button id="pull-model-btn" class="hidden text-xs font-medium px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-indigo-500 hover:text-indigo-400" title="Pull Ari 3B Model (1.9 GB)">
+          <button id="pull-model-btn" class="text-xs font-medium px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-indigo-400 hover:text-indigo-300 border-indigo-500/30 bg-indigo-500/10" title="Pull Ari 3B Model (1.9 GB)">
             <i class="fa-solid fa-cloud-arrow-down text-xs"></i>
             <span id="pull-model-btn-text">Pull Ari 3B (1.9 GB)</span>
           </button>
@@ -137,6 +141,12 @@
 
       <!-- Right Action Controls -->
       <div class="flex items-center gap-2">
+        <!-- Update Available Banner Pill -->
+        <button id="update-banner-btn" class="hidden text-xs font-medium px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-colors bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20" title="Click to view update">
+          <i class="fa-solid fa-sparkles text-[10px]"></i>
+          <span id="update-banner-text">Update Available</span>
+        </button>
+
         <!-- Hidden legacy hooks to maintain JS compatibility -->
         <div id="engine-badge" class="hidden"></div>
         <button id="toggle-search-btn" class="hidden"></button>
@@ -393,6 +403,61 @@
         <button id="start-pull-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors flex items-center gap-2">
           <i class="fa-solid fa-download"></i>
           <span>Start Download</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Auto-Updater Modal -->
+  <div id="update-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold tracking-tight" id="update-modal-title">Ari Chat Update</h3>
+            <p class="text-[11px] text-zinc-400" id="update-modal-subtitle">New version available</p>
+          </div>
+        </div>
+        <button id="close-update-modal-btn" class="text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div id="update-notes-container" class="p-3 rounded-lg border text-xs max-h-48 overflow-y-auto space-y-1.5 bg-zinc-900/40" style="border-color: var(--border-subtle)">
+        <p class="font-medium text-zinc-300">Release Notes:</p>
+        <div id="update-notes-text" class="text-zinc-400 text-[11px] whitespace-pre-line leading-relaxed font-sans"></div>
+      </div>
+
+      <!-- Update Progress Display -->
+      <div id="update-progress-section" class="space-y-2 hidden">
+        <div class="flex items-center justify-between text-xs">
+          <span id="update-status-label" class="text-zinc-300 font-medium">Downloading update...</span>
+          <span id="update-percent-label" class="font-mono font-semibold text-amber-400">0%</span>
+        </div>
+        <div class="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+          <div id="update-progress-bar" class="h-full bg-amber-500 transition-all duration-300 rounded-full" style="width: 0%"></div>
+        </div>
+        <div class="flex items-center justify-between text-[11px] text-zinc-400 font-mono pt-1">
+          <span id="update-speed-label">0.0 MB/s</span>
+          <span id="update-eta-label">ETA: --</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
+        <button id="cancel-update-btn" class="px-3 py-1.5 rounded-md text-xs font-medium border hidden hover:text-rose-400 transition-colors" style="border-color: var(--border-subtle)">
+          Cancel
+        </button>
+        <button id="start-update-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-download text-xs"></i>
+          <span>Download & Install Update</span>
+        </button>
+        <button id="apply-update-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-semibold transition-colors flex items-center gap-1.5 hidden">
+          <i class="fa-solid fa-rotate text-xs"></i>
+          <span>Restart & Apply Update</span>
         </button>
       </div>
     </div>

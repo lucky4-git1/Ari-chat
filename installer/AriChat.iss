@@ -1,6 +1,6 @@
 ; Inno Setup Script for Ari Chat Standalone Application
 #define MyAppName "Ari Chat"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "Ari AI"
 #define MyAppURL "https://github.com/lucky4-git1/Ari-chat"
 #define MyAppExeName "AriChat.exe"
@@ -19,7 +19,7 @@ DefaultDirName={localappdata}\Programs\AriChat
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
 OutputDir={#SourceDir}\release_packages
-OutputBaseFilename=AriChat-Setup-v1.0.0
+OutputBaseFilename=AriChat-Setup-v1.0.1
 SetupIconFile={#SourceDir}\app.ico
 Compression=lzma2/max
 SolidCompression=yes
