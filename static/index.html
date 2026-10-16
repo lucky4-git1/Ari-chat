@@ -287,38 +287,47 @@
     </div>
   </div>
 
+  <!-- Floating Memory Toast Notification -->
+  <div id="memory-toast-container" class="fixed top-16 right-4 z-50 pointer-events-none flex flex-col gap-2"></div>
+
   <!-- Persistent Memory Modal -->
   <div id="memory-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
     <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-xl space-y-4 animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
       <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
-        <div>
-          <h3 class="text-sm font-semibold tracking-tight">Long-Term Memory</h3>
-          <p class="text-[11px] text-zinc-400">Stored facts and preferences injected into Ari's context</p>
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i class="fa-solid fa-brain text-sm"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-sm font-semibold tracking-tight">Memory & Personalization</h3>
+              <span id="memory-count-badge" class="text-[10px] bg-indigo-500/10 text-indigo-400 px-1.5 py-0.5 rounded-full font-mono border border-indigo-500/20">0 Memories</span>
+            </div>
+            <p class="text-[11px] text-zinc-400">Automatically extracted from your chats to personalize answers</p>
+          </div>
         </div>
         <button id="close-memory-modal-btn" class="text-zinc-400 hover:text-current p-1">
           <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
 
-      <!-- Add New Memory -->
-      <form id="add-memory-form" class="space-y-2 p-2.5 rounded-lg border" style="border-color: var(--border-subtle)">
-        <div class="grid grid-cols-2 gap-2">
-          <input id="new-mem-key" type="text" placeholder="Attribute (e.g. Name)" required class="bg-transparent border rounded-md px-2.5 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
-          <input id="new-mem-val" type="text" placeholder="Value (e.g. Alex)" required class="bg-transparent border rounded-md px-2.5 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
-        </div>
-        <button type="submit" class="w-full py-1.5 rounded-md text-xs font-medium card-minimal">
-          Store Memory
-        </button>
-      </form>
+      <!-- Informational Hint -->
+      <div class="p-3 rounded-lg border text-[11px] text-zinc-400 bg-zinc-900/40 space-y-1" style="border-color: var(--border-subtle)">
+        <p class="text-zinc-300 font-medium flex items-center gap-1.5">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-400 text-xs"></i>
+          <span>Autonomous Learning</span>
+        </p>
+        <p>No manual entry needed! Just chat naturally. When you mention your role, preferred tech stack, response style, or say <em>"remember that..."</em>, Ari remembers it automatically across all chats.</p>
+      </div>
 
       <!-- Memories List -->
-      <div id="memories-container" class="flex-1 overflow-y-auto space-y-2 pr-1">
+      <div id="memories-container" class="flex-1 overflow-y-auto space-y-2 pr-1 min-h-[140px]">
         <!-- Rendered dynamically -->
       </div>
 
       <div class="pt-2 border-t flex items-center justify-between text-xs" style="border-color: var(--border-subtle)">
-        <button id="clear-all-memories-btn" class="text-rose-500 hover:underline">Clear All</button>
-        <span class="text-zinc-400 text-[11px]">Persistent across chats</span>
+        <button id="clear-all-memories-btn" class="text-rose-400 hover:text-rose-300 transition-colors">Clear All Memories</button>
+        <span class="text-zinc-500 text-[11px]">Private • Stored locally</span>
       </div>
     </div>
   </div>

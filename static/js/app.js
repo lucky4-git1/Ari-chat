@@ -85,9 +85,8 @@ const DOM = {
   memoryModal: document.getElementById("memory-modal"),
   closeMemoryModalBtn: document.getElementById("close-memory-modal-btn"),
   memoriesContainer: document.getElementById("memories-container"),
-  addMemoryForm: document.getElementById("add-memory-form"),
-  newMemKey: document.getElementById("new-mem-key"),
-  newMemVal: document.getElementById("new-mem-val"),
+  memoryCountBadge: document.getElementById("memory-count-badge"),
+  memoryToastContainer: document.getElementById("memory-toast-container"),
   clearAllMemoriesBtn: document.getElementById("clear-all-memories-btn")
 };
 
@@ -224,7 +223,6 @@ function setupEventListeners() {
   // Memory Modal Listeners
   DOM.memoryModalBtn?.addEventListener("click", openMemoryModal);
   DOM.closeMemoryModalBtn?.addEventListener("click", closeMemoryModal);
-  DOM.addMemoryForm?.addEventListener("submit", handleAddMemory);
   DOM.clearAllMemoriesBtn?.addEventListener("click", handleClearMemories);
 
   // Model Pull Listeners
@@ -1058,8 +1056,52 @@ function scrollToBottom() {
 }
 
 /**
- * Memory Management
+ * Memory Management & Autonomous Personalization
  */
+function showMemoryToast(mem) {
+  if (!DOM.memoryToastContainer) return;
+
+  const toast = document.createElement("div");
+  toast.className =
+    "pointer-events-auto flex items-center gap-2.5 px-3 py-2 rounded-lg bg-zinc-900 border border-indigo-500/30 text-xs shadow-xl animate-in slide-in-from-top-2 fade-in transition-all duration-300";
+
+  toast.innerHTML = `
+    <div class="w-6 h-6 rounded-md bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xs shrink-0">
+      <i class="fa-solid fa-brain"></i>
+    </div>
+    <div class="flex flex-col min-w-0 pr-1 cursor-pointer" title="Click to view all memories">
+      <span class="text-[10px] text-zinc-400 font-medium">Memory Updated</span>
+      <span class="text-zinc-200 font-medium truncate max-w-[240px]">${escapeHtml(mem.key)}: ${escapeHtml(mem.value)}</span>
+    </div>
+    <button class="text-zinc-500 hover:text-zinc-300 p-1 text-xs shrink-0">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+
+  // Click on toast body opens memory viewer
+  toast.querySelector("div.cursor-pointer")?.addEventListener("click", () => {
+    openMemoryModal();
+  });
+
+  // Close button
+  const closeBtn = toast.querySelector("button");
+  closeBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toast.classList.add("opacity-0", "-translate-y-2");
+    setTimeout(() => toast.remove(), 250);
+  });
+
+  DOM.memoryToastContainer.appendChild(toast);
+
+  // Auto-dismiss after 4 seconds
+  setTimeout(() => {
+    if (toast.isConnected) {
+      toast.classList.add("opacity-0", "-translate-y-2");
+      setTimeout(() => toast.remove(), 250);
+    }
+  }, 4000);
+}
+
 async function openMemoryModal() {
   DOM.memoryModal.classList.remove("hidden");
   await loadMemories();
@@ -1069,46 +1111,62 @@ function closeMemoryModal() {
   DOM.memoryModal.classList.add("hidden");
 }
 
+function getMemoryCategoryIcon(cat) {
+  const c = (cat || "").toLowerCase();
+  if (c === "profile") return "fa-user";
+  if (c === "work" || c === "tech") return "fa-code";
+  if (c === "preference" || c === "instruction") return "fa-sliders";
+  if (c === "project") return "fa-rocket";
+  return "fa-heart";
+}
+
 async function loadMemories() {
-  DOM.memoriesContainer.innerHTML = `<div class="text-center py-4 text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Loading memories...</div>`;
+  DOM.memoriesContainer.innerHTML = `<div class="text-center py-6 text-xs text-zinc-500"><i class="fa-solid fa-spinner fa-spin mr-1.5"></i> Loading memories...</div>`;
   try {
     const list = await API.getMemories();
+    if (DOM.memoryCountBadge) {
+      DOM.memoryCountBadge.textContent = `${list.length} ${list.length === 1 ? 'Memory' : 'Memories'}`;
+    }
+
     if (list.length === 0) {
-      DOM.memoriesContainer.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">No memories stored yet. Tell Ari about yourself or add one above!</p>`;
+      DOM.memoriesContainer.innerHTML = `
+        <div class="text-center py-8 px-4 space-y-2">
+          <div class="w-10 h-10 mx-auto rounded-full bg-zinc-800/60 flex items-center justify-center text-zinc-500">
+            <i class="fa-solid fa-brain text-sm"></i>
+          </div>
+          <p class="text-xs font-medium text-zinc-300">No memories stored yet</p>
+          <p class="text-[11px] text-zinc-500 max-w-xs mx-auto">
+            Just chat naturally! Tell Ari about your role, favorite languages, or instructions like <em>"Keep code concise"</em>, and Ari will learn them automatically.
+          </p>
+        </div>`;
       return;
     }
+
     DOM.memoriesContainer.innerHTML = list
-      .map(
-        (m) => `
-        <div class="flex items-center justify-between p-2.5 rounded-xl bg-[#222530] border border-[#2e3446] text-xs">
-          <div>
-            <span class="font-semibold text-indigo-400">${escapeHtml(m.key)}:</span>
-            <span class="text-slate-200 ml-1">${escapeHtml(m.value)}</span>
-            <span class="text-[10px] bg-[#181a22] text-slate-400 px-1.5 py-0.5 rounded ml-2">${escapeHtml(m.category)}</span>
+      .map((m) => {
+        const icon = getMemoryCategoryIcon(m.category);
+        return `
+        <div class="flex items-start justify-between p-3 rounded-xl border card-minimal text-xs gap-3 transition-colors group" style="border-color: var(--border-subtle)">
+          <div class="flex items-start gap-2.5 min-w-0">
+            <div class="w-6 h-6 rounded-md bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-[11px] shrink-0 mt-0.5">
+              <i class="fa-solid ${icon}"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-zinc-200">${escapeHtml(m.key)}</span>
+                <span class="text-[9px] uppercase tracking-wider text-zinc-500 font-mono px-1.5 py-0.5 rounded bg-zinc-800/50">${escapeHtml(m.category || 'fact')}</span>
+              </div>
+              <p class="text-zinc-400 text-[11px] mt-0.5 leading-relaxed break-words">${escapeHtml(m.value)}</p>
+            </div>
           </div>
-          <button onclick="handleDeleteMemory(${m.id})" class="text-slate-500 hover:text-rose-400 p-1">
-            <i class="fa-solid fa-trash text-[11px]"></i>
+          <button onclick="handleDeleteMemory(${m.id})" title="Forget this memory" class="text-zinc-500 hover:text-rose-400 p-1.5 rounded-md transition-colors opacity-70 group-hover:opacity-100 shrink-0">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
           </button>
-        </div>`
-      )
+        </div>`;
+      })
       .join("");
   } catch (err) {
     DOM.memoriesContainer.innerHTML = `<p class="text-xs text-rose-400 text-center py-4">Error loading memories: ${err.message}</p>`;
-  }
-}
-
-async function handleAddMemory(e) {
-  e.preventDefault();
-  const key = DOM.newMemKey.value.trim();
-  const val = DOM.newMemVal.value.trim();
-  if (!key || !val) return;
-  try {
-    await API.createMemory(key, val);
-    DOM.newMemKey.value = "";
-    DOM.newMemVal.value = "";
-    await loadMemories();
-  } catch (err) {
-    alert("Failed to store memory: " + err.message);
   }
 }
 
@@ -1122,7 +1180,7 @@ window.handleDeleteMemory = async function (id) {
 };
 
 async function handleClearMemories() {
-  if (confirm("Are you sure you want to clear all stored memories?")) {
+  if (confirm("Are you sure you want Ari to forget all stored memories?")) {
     try {
       await API.clearMemories();
       await loadMemories();

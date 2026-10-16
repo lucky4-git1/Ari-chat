@@ -152,8 +152,8 @@ async def send_message_stream(
     db.commit()
     db.refresh(user_msg)
 
-    # 2. Extract and store any user preferences or facts into long-term memory
-    new_memory = detect_and_store_memory(db, user.id, req.content)
+    # 2. Automatically extract and store user facts, stack & preferences into persistent memory
+    new_memories = detect_and_store_memory(db, user.id, req.content)
 
     # 3. Retrieve long-term memories
     memories = get_user_memories(db, user.id)
@@ -198,9 +198,10 @@ async def send_message_stream(
     max_tokens_limit = 2048
 
     async def sse_event_generator():
-        # Notify client if long-term memory was learned
-        if new_memory:
-            yield f"data: {json.dumps({'type': 'memory_updated', 'memory': new_memory})}\n\n"
+        # Notify client if long-term memory was learned automatically
+        if new_memories:
+            for mem in new_memories:
+                yield f"data: {json.dumps({'type': 'memory_updated', 'memory': mem})}\n\n"
 
         # Send web sources metadata event if available
         if search_sources:
