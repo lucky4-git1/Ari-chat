@@ -60,11 +60,13 @@ def find_model_on_disk(filename: str) -> Optional[Path]:
     return None
 
 def list_available_models() -> List[str]:
-    """Scans models directory strictly for installed assistant GGUF models (3B and updated 1.5B only)."""
+    """Scans models directory strictly for installed assistant GGUF models (3B and 1.5B)."""
     models = []
-    if find_model_on_disk("ari_assistant_3b.gguf"):
+    has_3b = find_model_on_disk("qwen2.5-3b-instruct-q4_k_m.gguf") or find_model_on_disk("ari_assistant_3b.gguf")
+    has_15b = find_model_on_disk("qwen2.5-1.5b-instruct-q4_k_m.gguf") or find_model_on_disk("ari_assistant_1.5b.gguf")
+    if has_3b:
         models.append("ari-assistant-3b")
-    if find_model_on_disk("ari_assistant_1.5b.gguf"):
+    if has_15b:
         models.append("ari-assistant-1.5b")
     if not models:
         models = ["ari-assistant-3b", "ari-assistant-1.5b"]
@@ -72,8 +74,8 @@ def list_available_models() -> List[str]:
 
 def get_model_file(requested_model: Optional[str] = None) -> Optional[Path]:
     """Locates the GGUF model file for the requested model (1.5B or 3B), falling back gracefully."""
-    m15b = find_model_on_disk("ari_assistant_1.5b.gguf")
-    m3b = find_model_on_disk("ari_assistant_3b.gguf")
+    m3b = find_model_on_disk("qwen2.5-3b-instruct-q4_k_m.gguf") or find_model_on_disk("ari_assistant_3b.gguf")
+    m15b = find_model_on_disk("qwen2.5-1.5b-instruct-q4_k_m.gguf") or find_model_on_disk("ari_assistant_1.5b.gguf")
 
     if requested_model:
         req = requested_model.lower().replace("-", "_")

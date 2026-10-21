@@ -14,22 +14,24 @@ MODEL_CATALOG = {
     "ari-assistant-3b": {
         "id": "ari-assistant-3b",
         "name": "Ari 3B Assistant",
-        "filename": "ari_assistant_3b.gguf",
-        "url": "https://huggingface.co/sriyuth/ari-assistant-3b/resolve/main/ari_assistant_3b.gguf",
-        "size_bytes": 1929902784,
-        "size_label": "1.93 GB",
+        "filename": "qwen2.5-3b-instruct-q4_k_m.gguf",
+        "fallback_filename": "ari_assistant_3b.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+        "size_bytes": 2104930304,
+        "size_label": "2.0 GB",
         "recommended": True,
-        "description": "High-Precision Reasoning & Deep Multi-Turn Conversations"
+        "description": "Official Qwen 2.5 3B Instruct — State-of-the-Art Reasoning & Coding"
     },
     "ari-assistant-1.5b": {
         "id": "ari-assistant-1.5b",
         "name": "Ari 1.5B Assistant",
-        "filename": "ari_assistant_1.5b.gguf",
-        "url": "https://huggingface.co/sriyuth/ari-assistant-1.5b/resolve/main/ari_assistant_1.5b.gguf",
-        "size_bytes": 986048096,
-        "size_label": "986 MB",
+        "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "fallback_filename": "ari_assistant_1.5b.gguf",
+        "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+        "size_bytes": 1117437952,
+        "size_label": "1.0 GB",
         "recommended": False,
-        "description": "Ultra-Fast, Lightweight & Resource-Efficient Companion"
+        "description": "Official Qwen 2.5 1.5B Instruct — Fast, Lightweight & Accurate"
     }
 }
 
@@ -57,7 +59,11 @@ class ModelPullManager:
     def list_models(self) -> list:
         models = []
         for m_id, info in MODEL_CATALOG.items():
-            model_file = find_model_on_disk(info["filename"]) or (MODELS_DIR / info["filename"])
+            model_file = (
+                find_model_on_disk(info["filename"]) or
+                find_model_on_disk(info.get("fallback_filename", "")) or
+                (MODELS_DIR / info["filename"])
+            )
             installed = model_file.exists() and model_file.stat().st_size > 10 * 1024 * 1024
             actual_size = model_file.stat().st_size if installed else 0
             models.append({
@@ -85,7 +91,11 @@ class ModelPullManager:
                 return {"ok": False, "message": f"Unknown model id: {model_id}"}
 
             info = MODEL_CATALOG[model_id]
-            target_file = find_model_on_disk(info["filename"]) or (MODELS_DIR / info["filename"])
+            target_file = (
+                find_model_on_disk(info["filename"]) or
+                find_model_on_disk(info.get("fallback_filename", "")) or
+                (MODELS_DIR / info["filename"])
+            )
             if target_file.exists() and target_file.stat().st_size > 10 * 1024 * 1024:
                 return {
                     "ok": True,

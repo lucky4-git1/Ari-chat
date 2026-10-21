@@ -48,7 +48,7 @@ Source: "{#SourceDir}\static\*"; DestDir: "{app}\static"; Flags: ignoreversion r
 Source: "{#SourceDir}\app\*"; DestDir: "{app}\app"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Pre-installed Lightweight Model (Instant offline out-of-the-box chat)
-Source: "{#SourceDir}\models\ari_assistant_1.5b.gguf"; DestDir: "{app}\models"; Flags: ignoreversion
+Source: "{#SourceDir}\models\qwen2.5-1.5b-instruct-q4_k_m.gguf"; DestDir: "{app}\models"; Flags: ignoreversion
 
 ; Helper Scripts & Readme
 Source: "{#SourceDir}\start.bat"; DestDir: "{app}"; Flags: ignoreversion

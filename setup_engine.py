@@ -34,10 +34,12 @@ LLAMA_RELEASES = {
     "macos_x64": "https://github.com/ggml-org/llama.cpp/releases/download/b11580/llama-b11580-bin-macos-x64.zip",
 }
 
-# Hugging Face direct model download URLs
+# Hugging Face direct model download URLs (Official Qwen 2.5 Foundation)
 MODEL_URLS = {
-    "ari_assistant_1.5b.gguf": "https://huggingface.co/sriyuth/ari-assistant-1.5b/resolve/main/ari_assistant_1.5b.gguf",
-    "ari_assistant_3b.gguf": "https://huggingface.co/sriyuth/ari-assistant-3b/resolve/main/ari_assistant_3b.gguf",
+    "qwen2.5-1.5b-instruct-q4_k_m.gguf": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "qwen2.5-3b-instruct-q4_k_m.gguf": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+    "ari_assistant_1.5b.gguf": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "ari_assistant_3b.gguf": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
 }
 
 def get_platform_key():

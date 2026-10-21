@@ -113,10 +113,12 @@ def create_windows_package():
                     arc = f"AriChat/static/{fp.relative_to(static_dir)}"
                     zf.write(fp, arcname=arc)
 
-        m15 = APP_DIR / "models" / "ari_assistant_1.5b.gguf"
+        m15 = APP_DIR / "models" / "qwen2.5-1.5b-instruct-q4_k_m.gguf"
+        if not m15.exists():
+            m15 = APP_DIR / "models" / "ari_assistant_1.5b.gguf"
         if m15.exists():
-            print(f" -> Adding pre-installed model: ari_assistant_1.5b.gguf ({m15.stat().st_size / (1024*1024):.1f} MB)")
-            zf.write(m15, arcname="AriChat/models/ari_assistant_1.5b.gguf")
+            print(f" -> Adding pre-installed model: {m15.name} ({m15.stat().st_size / (1024*1024):.1f} MB)")
+            zf.write(m15, arcname=f"AriChat/models/{m15.name}")
 
     print(f"[OK] Created {zip_path.name} ({zip_path.stat().st_size / (1024*1024):.1f} MB)")
     return zip_path
