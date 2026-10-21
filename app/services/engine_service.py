@@ -398,7 +398,7 @@ def clean_response_text(text: str) -> str:
     text = re.sub(r'(\#[a-zA-Z0-9_\-]{1,15}){2,}.*$', '', text)
     text = re.sub(r'\s*\#[a-zA-Z0-9_\-]{2,20}\s*$', '', text)
     # Keep printable ASCII, newlines, and tabs
-    # Universal paragraph deduplication: truncate before the first duplicate paragraph
+    # Universal paragraph deduplication: truncate before the first duplicate paragraph (preserves newlines, lists, and formatting)
     paras = text.split('\n')
     seen_paras = set()
     kept_paras = []
@@ -411,20 +411,6 @@ def clean_response_text(text: str) -> str:
             seen_paras.add(norm)
         kept_paras.append(p)
     text = '\n'.join(kept_paras)
-
-    # Universal sentence deduplication: truncate before the first duplicate sentence
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    seen_sents = set()
-    kept_sents = []
-    for s in sentences:
-        s_clean = s.strip()
-        if len(s_clean) >= 25:
-            norm = re.sub(r'[^\w\s]', '', s_clean).lower()
-            if norm in seen_sents:
-                break
-            seen_sents.add(norm)
-        kept_sents.append(s)
-    text = ' '.join(kept_sents)
 
     # Strip repeating loops
     pat = detect_repetition(text, threshold=3)
@@ -463,23 +449,37 @@ def clean_response_text(text: str) -> str:
     if reintro_match:
         text = text[:20 + reintro_match.start()]
 
-    # Auto-fence bare HTML code so browsers highlight it instead of executing live elements
-    if "```" not in text:
-        html_match = re.search(r'<(?:nav|ul|ol|form|html|body|header|footer|section|main|div)\b', text, re.IGNORECASE)
-        if html_match:
-            start_idx = html_match.start()
-            prefix = text[:start_idx].rstrip()
-            code_part = text[start_idx:].strip()
-            text = f"{prefix}\n\n```html\n{code_part}\n```" if prefix else f"```html\n{code_part}\n```"
+    # Handle HTML formatting:
+    # 1. If it's a full raw HTML document/webpage and not fenced, wrap it in an html code block
+    if "```" not in text and re.search(r'<!DOCTYPE\s+html|<html\b', text, re.IGNORECASE):
+        text = f"```html\n{text.strip()}\n```"
+    else:
+        # 2. Outside fenced code blocks, convert any stray conversational HTML tags (e.g. <h3>, <ol>, <li>, <div>)
+        # into clean Markdown so recipes and guides render as beautiful rich text rather than code boxes
+        parts = re.split(r'(```[\s\S]*?```)', text)
+        converted_parts = []
+        for i, part in enumerate(parts):
+            if i % 2 == 0:  # Outside code blocks
+                # Convert headings <h1> to <h6> -> Markdown # to ######
+                for level in range(6, 0, -1):
+                    part = re.sub(rf'<h{level}\b[^>]*>(.*?)</h{level}>', r'\n\n' + ('#' * level) + r' \1\n\n', part, flags=re.IGNORECASE | re.DOTALL)
+                # Convert bold and italic tags
+                part = re.sub(r'<(?:strong|b)\b[^>]*>(.*?)</(?:strong|b)>', r'**\1**', part, flags=re.IGNORECASE | re.DOTALL)
+                part = re.sub(r'<(?:em|i)\b[^>]*>(.*?)</(?:em|i)>', r'*\1*', part, flags=re.IGNORECASE | re.DOTALL)
+                # Convert list items <li>item</li> -> - item
+                part = re.sub(r'<li\b[^>]*>(.*?)</li>', r'\n- \1', part, flags=re.IGNORECASE | re.DOTALL)
+                # Strip structural HTML wrapper tags so markdown flows naturally
+                part = re.sub(r'</?(?:ul|ol|div|span|section|article|p|header|footer|nav|main)\b[^>]*>', '\n', part, flags=re.IGNORECASE)
+                # Convert <br> to newline
+                part = re.sub(r'<br\s*/?>', '\n', part, flags=re.IGNORECASE)
+                # Normalize multiple newlines
+                part = re.sub(r'\n{3,}', '\n\n', part)
+            converted_parts.append(part)
+        text = ''.join(converted_parts)
 
     # Auto-close unclosed code fences if generation was truncated mid-code
     if text.count("```") % 2 != 0:
         text = text.rstrip() + "\n```"
-    elif "```" not in text:
-        # If generation ended mid-sentence without closing punctuation, trim to the last complete sentence
-        last_punct = max(text.rfind('.'), text.rfind('!'), text.rfind('?'))
-        if last_punct > 30 and (len(text) - last_punct) > 2:
-            text = text[:last_punct + 1]
 
     return text.strip()
 

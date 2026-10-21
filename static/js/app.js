@@ -1277,8 +1277,7 @@ function stripClientRepeats(text) {
     "//[",
     "[iVar",
     "Intialized:",
-    "Answered.",
-    "<br/>"
+    "Answered."
   ];
   for (const marker of stopMarkers) {
     const idx = cleaned.toLowerCase().indexOf(marker.toLowerCase());
