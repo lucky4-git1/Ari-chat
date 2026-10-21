@@ -120,36 +120,155 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
   color: #18181b !important;
 }
 
-/* Markdown Typography */
+/* Markdown Typography & ChatGPT-grade Presentation */
 .markdown-body {
-  line-height: 1.72;
+  line-height: 1.75;
   color: var(--text-primary);
+  font-size: 0.9375rem;
+  word-break: break-word;
 }
+
 .markdown-body p {
-  margin-bottom: 0.85em;
+  margin-bottom: 0.9em;
 }
+
 .markdown-body p:last-child {
   margin-bottom: 0;
 }
+
+/* Headings */
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  margin-top: 1.4em;
+  margin-bottom: 0.55em;
+}
+
+.markdown-body h1 {
+  font-size: 1.45rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.35rem;
+}
+
+.markdown-body h2 {
+  font-size: 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.25rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.1rem;
+}
+
+.markdown-body h4 {
+  font-size: 0.975rem;
+}
+
+/* Lists */
 .markdown-body ul, .markdown-body ol {
   margin-left: 1.4em;
-  margin-bottom: 0.85em;
+  margin-bottom: 0.9em;
 }
+
 .markdown-body ul {
   list-style-type: disc;
 }
+
 .markdown-body ol {
   list-style-type: decimal;
 }
+
+.markdown-body li {
+  margin-bottom: 0.35em;
+}
+
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin-top: 0.3em;
+  margin-bottom: 0.3em;
+}
+
+/* Blockquotes */
+.markdown-body blockquote {
+  margin: 1em 0;
+  padding: 0.6em 1em;
+  border-left: 3px solid var(--border-medium);
+  background-color: var(--bg-surface-hover);
+  color: var(--text-secondary);
+  border-radius: 0 0.4rem 0.4rem 0;
+  font-style: italic;
+}
+
+.markdown-body blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* Tables (ChatGPT-style responsive tables) */
+.markdown-body table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.1em 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.55rem;
+  overflow: hidden;
+  font-size: 0.875rem;
+}
+
+.markdown-body thead {
+  background-color: var(--bg-surface-hover);
+}
+
+.markdown-body th {
+  padding: 0.65rem 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.markdown-body td {
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.markdown-body tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-body tbody tr:nth-child(even) {
+  background-color: var(--bg-surface);
+}
+
+.markdown-body tbody tr:hover {
+  background-color: var(--bg-surface-hover);
+}
+
+/* Horizontal Rules */
+.markdown-body hr {
+  height: 1px;
+  background-color: var(--border-subtle);
+  border: none;
+  margin: 1.4em 0;
+}
+
+/* Inline Code */
 .markdown-body code:not(pre code) {
   background: var(--bg-surface-hover);
   color: var(--text-primary);
   padding: 0.15rem 0.35rem;
   border-radius: 0.3rem;
-  font-size: 0.875em;
+  font-size: 0.85em;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   border: 1px solid var(--border-subtle);
 }
+
+/* Code Blocks */
 .markdown-body pre {
   margin: 1em 0;
   border-radius: 0.65rem;
@@ -157,6 +276,7 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
   background: var(--code-bg) !important;
   border: 1px solid var(--border-subtle);
 }
+
 .code-header {
   display: flex;
   justify-content: space-between;
@@ -167,11 +287,21 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
   font-size: 0.75rem;
   color: var(--text-secondary);
 }
+
 .code-header button {
   transition: color 0.15s ease;
 }
+
 .code-header button:hover {
   color: var(--text-primary);
+}
+
+/* KaTeX Math Equations */
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5em 0;
+  margin: 0.8em 0 !important;
 }
 
 /* User & Assistant Message Layout */

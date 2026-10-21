@@ -1076,6 +1076,23 @@ function decorateCodeBlocks(container) {
 
     pre.prepend(header);
   });
+
+  // Render LaTeX math formulas if KaTeX is loaded
+  if (window.renderMathInElement) {
+    try {
+      renderMathInElement(container, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "$", right: "$", display: false },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "\\(", right: "\\)", display: false }
+        ],
+        throwOnError: false
+      });
+    } catch (e) {
+      console.warn("KaTeX render error:", e);
+    }
+  }
 }
 
 function scrollToBottom() {
