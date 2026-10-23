@@ -268,6 +268,8 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
     seen_paras = set()
     for p in paras:
         norm = re.sub(r'[^\w\s]', '', p).lower()
+        if not norm or len(norm.strip()) < 10:
+            continue
         if norm in seen_paras:
             return p
         seen_paras.add(norm)
@@ -277,12 +279,14 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
     seen_sents = set()
     for s in sentences:
         norm = re.sub(r'[^\w\s]', '', s).lower()
+        if not norm or len(norm.strip()) < 10:
+            continue
         if norm in seen_sents:
             return s
         seen_sents.add(norm)
 
     # 3. Universal 8-word sequence duplicate check (detects phrase echoing across sentences)
-    words = text.lower().split()
+    words = [w for w in text.lower().split() if any(c.isalnum() for c in w)]
     if len(words) >= 16:
         n = 8
         seen_ngrams = set()
@@ -297,6 +301,9 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
     for l in range(15, min(len(clean_strip) // 2 + 1, 1000)):
         pattern = clean_strip[-l:]
         if not pattern.strip() or len(pattern.strip()) < 8:
+            continue
+        # Ignore markdown table rows, dividers, horizontal rules, and punctuation borders
+        if not any(c.isalnum() for c in pattern):
             continue
         prefix = clean_strip[:-l].rstrip()
         if prefix.endswith(pattern):
@@ -448,6 +455,9 @@ def clean_response_text(text: str) -> str:
     reintro_match = re.search(r'\nI\'m Ari\b', text[20:], re.IGNORECASE)
     if reintro_match:
         text = text[:20 + reintro_match.start()]
+
+    # Strip unnecessary outer ```markdown ... ``` wrappers so tables and prose render directly as styled rich content
+    text = re.sub(r'^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$', r'\1', text.strip(), flags=re.IGNORECASE)
 
     # Handle HTML formatting:
     # 1. If it's a full raw HTML document/webpage and not fenced, wrap it in an html code block
@@ -634,21 +644,25 @@ async def _stream_standalone(
 
                                 for stop_tok in STOP_WORDS:
                                     if stop_tok.lower() in accumulated.lower():
+                                        logger.info(f"Stream circuit break: stop_word '{stop_tok}'")
                                         yield json.dumps({"done": True, "token": "", "circuit_break": True, "reason": f"stop_word:{stop_tok}"}) + "\n"
                                         return
 
                                 if detect_simulated_turn(accumulated):
+                                    logger.info("Stream circuit break: simulated_turn")
                                     yield json.dumps({"done": True, "token": "", "circuit_break": True, "reason": "simulated_turn"}) + "\n"
                                     return
 
                                 rep_pat = detect_repetition(accumulated, threshold=3)
                                 if rep_pat:
+                                    logger.info(f"Stream circuit break: repetition '{rep_pat[:30]}'")
                                     yield json.dumps({"done": True, "circuit_break": True, "reason": f"repetition:{rep_pat}"}) + "\n"
                                     return
 
                                 yield json.dumps({"token": clean_tok, "done": done}) + "\n"
 
                             if done:
+                                logger.info(f"Stream finished normally: finish_reason={finish_reason}")
                                 break
                         except json.JSONDecodeError:
                             continue

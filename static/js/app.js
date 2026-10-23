@@ -881,6 +881,11 @@ async function handleSendMessage(e) {
             if (data.type === "token") {
               const tok = data.token;
 
+              // Smoothly transition from thinking filler to active streaming
+              const filler = botBubble.querySelector(".assistant-status-filler");
+              if (filler) filler.remove();
+              bodyEl.classList.remove("hidden");
+
               // Check reasoning tags
               if (tok.includes("<thought>")) {
                 insideThought = true;
@@ -907,11 +912,18 @@ async function handleSendMessage(e) {
 
             // 3. Error
             if (data.type === "error") {
+              const filler = botBubble.querySelector(".assistant-status-filler");
+              if (filler) filler.remove();
+              bodyEl.classList.remove("hidden");
               bodyEl.innerHTML += `<div class="text-xs text-rose-400 mt-2 p-2 bg-rose-500/10 rounded-lg">${escapeHtml(data.error)}</div>`;
             }
 
             // 4. Finished
             if (data.type === "done") {
+              const filler = botBubble.querySelector(".assistant-status-filler");
+              if (filler) filler.remove();
+              bodyEl.classList.remove("hidden");
+
               if (data.clean_content) {
                 fullResponse = data.clean_content;
               } else {
@@ -919,6 +931,7 @@ async function handleSendMessage(e) {
               }
               bodyEl.innerHTML = marked.parse(fullResponse);
               decorateCodeBlocks(bodyEl);
+              attachMessageActionBar(botBubble, fullResponse, text);
               updateConversationTitleAfterSend(text);
             }
           } catch (e) {
@@ -928,11 +941,16 @@ async function handleSendMessage(e) {
       }
     }
   } catch (err) {
+    const filler = botBubble.querySelector(".assistant-status-filler");
+    if (filler) filler.remove();
+    bodyEl.classList.remove("hidden");
+
     if (err.name === "AbortError" || err.message?.includes("aborted")) {
       // Stopped cleanly by user
       if (fullResponse) {
         fullResponse = stripClientRepeats(fullResponse);
         bodyEl.innerHTML = marked.parse(fullResponse);
+        attachMessageActionBar(botBubble, fullResponse, text);
       }
     } else {
       bodyEl.innerHTML += `<div class="text-xs text-rose-400 mt-2 p-2 bg-rose-500/10 rounded-lg">Error: ${escapeHtml(err.message)}</div>`;
@@ -940,10 +958,15 @@ async function handleSendMessage(e) {
   } finally {
     setGenerationState(false);
     state.abortController = null;
-    // Remove any trailing cursor
+    const filler = botBubble.querySelector(".assistant-status-filler");
+    if (filler) filler.remove();
+    bodyEl.classList.remove("hidden");
     const blinker = bodyEl.querySelector(".cursor-blink");
     if (blinker) blinker.remove();
     decorateCodeBlocks(bodyEl);
+    if (fullResponse) {
+      attachMessageActionBar(botBubble, fullResponse, text);
+    }
   }
 }
 
@@ -959,6 +982,23 @@ function updateConversationTitleAfterSend(firstPrompt) {
 function createAssistantPlaceholder() {
   const el = document.createElement("div");
   el.className = "flex gap-3 max-w-3xl mx-auto";
+
+  let spinnerText = "Thinking...";
+  let spinnerIcon = `
+    <span class="thinking-loader">
+      <span class="thinking-dot"></span>
+      <span class="thinking-dot"></span>
+      <span class="thinking-dot"></span>
+    </span>`;
+
+  if (state.webSearch) {
+    spinnerIcon = `<i class="fa-solid fa-compass fa-spin text-indigo-400 text-xs"></i>`;
+    spinnerText = "Searching the web & gathering sources...";
+  } else if (state.reasoningMode) {
+    spinnerIcon = `<i class="fa-solid fa-brain text-purple-400 animate-pulse text-xs"></i>`;
+    spinnerText = "Reasoning step-by-step...";
+  }
+
   el.innerHTML = `
     <div class="w-6 h-6 rounded-md border flex items-center justify-center shrink-0 text-current mt-0.5" style="border-color: var(--border-subtle)">
       <svg viewBox="0 0 64 64" fill="none" class="w-4 h-4" xmlns="http://www.w3.org/2000/svg">
@@ -976,12 +1016,83 @@ function createAssistantPlaceholder() {
         <summary><i class="fa-solid fa-brain text-xs"></i> Thought process</summary>
         <div class="reasoning-text"></div>
       </details>
-      <div class="markdown-body text-sm select-text pt-0.5">
+      <div class="assistant-status-filler">
+        ${spinnerIcon}
+        <span class="status-filler-text">${spinnerText}</span>
+      </div>
+      <div class="markdown-body text-sm select-text pt-0.5 hidden">
         <span class="cursor-blink"></span>
       </div>
     </div>
   `;
   return el;
+}
+
+function attachMessageActionBar(container, markdownText, userPrompt) {
+  if (!container) return;
+  if (container.querySelector(".msg-action-bar")) return; // prevent duplicate bars
+
+  const currentModel = DOM.modelSelect?.value?.includes("3b") ? "Ari 3B • Instruct" : "Ari 1.5B • Fast";
+  const actionBar = document.createElement("div");
+  actionBar.className = "msg-action-bar";
+  actionBar.innerHTML = `
+    <button class="msg-action-btn copy-msg-btn" title="Copy response">
+      <i class="fa-regular fa-copy text-xs"></i>
+      <span class="text-[11px]">Copy</span>
+    </button>
+    ${userPrompt ? `
+    <button class="msg-action-btn regen-msg-btn" title="Regenerate response">
+      <i class="fa-solid fa-arrows-rotate text-xs"></i>
+      <span class="text-[11px]">Regenerate</span>
+    </button>` : ""}
+    <button class="msg-action-btn feedback-like-btn" title="Good response">
+      <i class="fa-regular fa-thumbs-up text-xs"></i>
+    </button>
+    <button class="msg-action-btn feedback-dislike-btn" title="Bad response">
+      <i class="fa-regular fa-thumbs-down text-xs"></i>
+    </button>
+    <span class="text-[10px] text-zinc-500 font-mono ml-auto tracking-wider">${currentModel}</span>
+  `;
+
+  // Copy handler
+  const copyBtn = actionBar.querySelector(".copy-msg-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(markdownText);
+      copyBtn.innerHTML = `<i class="fa-solid fa-check text-emerald-400 text-xs"></i><span class="text-[11px] text-emerald-400 font-medium">Copied!</span>`;
+      setTimeout(() => {
+        copyBtn.innerHTML = `<i class="fa-regular fa-copy text-xs"></i><span class="text-[11px]">Copy</span>`;
+      }, 2000);
+    });
+  }
+
+  // Regenerate handler
+  const regenBtn = actionBar.querySelector(".regen-msg-btn");
+  if (regenBtn && userPrompt) {
+    regenBtn.addEventListener("click", () => {
+      DOM.messageInput.value = userPrompt;
+      handleSendMessage();
+    });
+  }
+
+  // Feedback like/dislike handlers
+  const likeBtn = actionBar.querySelector(".feedback-like-btn");
+  const dislikeBtn = actionBar.querySelector(".feedback-dislike-btn");
+  if (likeBtn && dislikeBtn) {
+    likeBtn.addEventListener("click", () => {
+      likeBtn.classList.toggle("active");
+      dislikeBtn.classList.remove("active");
+      likeBtn.querySelector("i").className = likeBtn.classList.contains("active") ? "fa-solid fa-thumbs-up text-xs" : "fa-regular fa-thumbs-up text-xs";
+    });
+    dislikeBtn.addEventListener("click", () => {
+      dislikeBtn.classList.toggle("active");
+      likeBtn.classList.remove("active");
+      dislikeBtn.querySelector("i").className = dislikeBtn.classList.contains("active") ? "fa-solid fa-thumbs-down text-xs" : "fa-regular fa-thumbs-down text-xs";
+    });
+  }
+
+  const contentCol = container.querySelector(".flex-1") || container;
+  contentCol.appendChild(actionBar);
 }
 
 function renderMessage(msg) {
@@ -1043,6 +1154,7 @@ function renderMessage(msg) {
       </div>
     `;
     decorateCodeBlocks(el.querySelector(".markdown-body"));
+    attachMessageActionBar(el, msg.content || "", "");
   }
 
   DOM.messagesContainer.appendChild(el);
@@ -1260,6 +1372,7 @@ function formatDate(isoStr) {
 function stripClientRepeats(text) {
   if (!text) return "";
   let cleaned = text.replace(/^<(?:response|answer)>\s*/i, "");
+  cleaned = cleaned.replace(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$/i, "$1");
 
   // Cut at known stop tokens or synthetic markers
   const stopMarkers = [
