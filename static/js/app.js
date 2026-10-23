@@ -338,17 +338,20 @@ async function handleAuthSubmit(e) {
 }
 
 async function handleGuestDemo() {
-  const randNum = Math.floor(1000 + Math.random() * 9000);
-  const username = `guest_${randNum}`;
-  const password = "guest_password_123";
+  DOM.authError.classList.add("hidden");
+  DOM.guestBtn.disabled = true;
+  DOM.guestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Entering as Guest...</span>`;
+
   try {
-    const data = await API.register(username, `${username}@arichat.local`, password);
+    const data = await API.guestLogin();
     setUserState(data.user);
     await loadConversations();
-  } catch {
-    const data = await API.login(username, password);
-    setUserState(data.user);
-    await loadConversations();
+  } catch (err) {
+    DOM.authError.textContent = err.message || "Failed to continue as guest";
+    DOM.authError.classList.remove("hidden");
+  } finally {
+    DOM.guestBtn.disabled = false;
+    DOM.guestBtn.innerHTML = `Continue as Guest`;
   }
 }
 

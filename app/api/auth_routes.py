@@ -76,6 +76,28 @@ def login(req: UserLoginRequest, db: Session = Depends(get_db)):
         "user": {"id": user.id, "username": user.username, "email": user.email}
     }
 
+@router.post("/guest")
+def guest_login(db: Session = Depends(get_db)):
+    """Instantly logs in or registers the local Guest session."""
+    guest_user = db.query(User).filter(User.username == "guest").first()
+    if not guest_user:
+        hashed = hash_password("guest_ari_chat_pass")
+        guest_user = User(
+            username="guest",
+            email="guest@ari.chat",
+            hashed_password=hashed
+        )
+        db.add(guest_user)
+        db.commit()
+        db.refresh(guest_user)
+
+    token = create_access_token({"sub": str(guest_user.id), "username": guest_user.username})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"id": guest_user.id, "username": "Guest", "email": guest_user.email}
+    }
+
 @router.get("/me")
 def get_me(user: User = Depends(get_current_user)):
     return {

@@ -76,6 +76,14 @@ const API = {
     return data;
   },
 
+  async guestLogin() {
+    const data = await this.request("/api/auth/guest", {
+      method: "POST"
+    });
+    this.setAuth(data.access_token, data.user);
+    return data;
+  },
+
   async getMe() {
     return this.request("/api/auth/me");
   },
