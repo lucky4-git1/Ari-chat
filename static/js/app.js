@@ -13,7 +13,8 @@ const state = {
   abortController: null,
   authMode: "login", // 'login' or 'register'
   modelsData: [],
-  modelPullTimer: null
+  modelPullTimer: null,
+  userScrolledUp: false
 };
 
 // DOM Elements
@@ -214,6 +215,16 @@ function setupEventListeners() {
       e.stopPropagation();
       stopGeneration();
     }
+  });
+
+  // Smart User Scroll Tracking (Claude / ChatGPT style: auto-scroll pauses if user scrolls up)
+  DOM.messagesContainer?.addEventListener("scroll", () => {
+    const threshold = 80;
+    const distanceFromBottom =
+      DOM.messagesContainer.scrollHeight -
+      DOM.messagesContainer.scrollTop -
+      DOM.messagesContainer.clientHeight;
+    state.userScrolledUp = distanceFromBottom > threshold;
   });
 
   // Search Filter in Sidebar
@@ -707,7 +718,8 @@ async function selectConversation(id) {
     } else {
       DOM.welcomeHero.classList.add("hidden");
       detail.messages.forEach((msg) => renderMessage(msg));
-      scrollToBottom();
+      state.userScrolledUp = false;
+      scrollToBottom(true);
     }
   } catch (err) {
     console.error("Error loading chat:", err);
@@ -802,15 +814,16 @@ async function handleSendMessage(e) {
 
   state.abortController = new AbortController();
   setGenerationState(true);
+  state.userScrolledUp = false;
 
   // Render User Message
   renderMessage({ role: "user", content: text, created_at: new Date().toISOString() });
-  scrollToBottom();
+  scrollToBottom(true);
 
   // Create Assistant Message Placeholder
   const botBubble = createAssistantPlaceholder();
   DOM.messagesContainer.appendChild(botBubble);
-  scrollToBottom();
+  scrollToBottom(true);
 
   const token = API.getToken();
   const sourcesContainer = botBubble.querySelector(".sources-container");
@@ -1210,8 +1223,11 @@ function decorateCodeBlocks(container) {
   }
 }
 
-function scrollToBottom() {
-  DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+function scrollToBottom(force = false) {
+  if (!DOM.messagesContainer) return;
+  if (force || !state.userScrolledUp) {
+    DOM.messagesContainer.scrollTop = DOM.messagesContainer.scrollHeight;
+  }
 }
 
 /**

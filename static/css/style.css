@@ -535,19 +535,58 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
   color: var(--text-muted);
 }
 
-/* Modern Send/Stop Button State */
+/* Modern Claude / GPT-Grade Send & Stop Button */
+#send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background-color: var(--text-primary);
+  color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#send-btn:disabled {
+  background-color: transparent !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border-subtle) !important;
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+#send-btn:not(:disabled):hover {
+  transform: scale(1.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+#send-btn:not(:disabled):active {
+  transform: scale(0.95);
+}
+
 #send-btn.stop-active {
   background-color: var(--text-primary) !important;
-  color: var(--accent-contrast) !important;
+  color: var(--bg-primary) !important;
   border-color: var(--text-primary) !important;
   opacity: 1 !important;
   cursor: pointer !important;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.2);
+  animation: pulse-stop 2.2s infinite ease-in-out;
+}
+
+#send-btn.stop-active:hover {
+  opacity: 0.88 !important;
   transform: scale(1.04);
 }
-#send-btn.stop-active:hover {
-  opacity: 0.85 !important;
-}
-#send-btn.stop-active:active {
-  transform: scale(0.96);
+
+@keyframes pulse-stop {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.07);
+  }
 }

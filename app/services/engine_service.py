@@ -109,14 +109,15 @@ def start_standalone_engine(model_path: Optional[Path] = None) -> bool:
 
     try:
         log_file = open(log_path, "a", encoding="utf-8")
+        cpu_threads = str(min(os.cpu_count() or 6, 8))
         cmd = [
             str(exe),
             "-m", str(model),
             "-c", "4096",
             "-b", "512",
             "-ub", "512",
-            "-t", "4",
-            "-tb", "4",
+            "-t", cpu_threads,
+            "-tb", cpu_threads,
             "-np", "1",
             "--repeat-penalty", "1.05",
             "--repeat-last-n", "64",
@@ -362,6 +363,10 @@ def clean_response_text(text: str) -> str:
         return ""
     # Strip opening synthetic wrappers if present
     text = re.sub(r'^(<response>|<answer>)\s*', '', text, flags=re.IGNORECASE)
+
+    # Strip opening conversational clichés (e.g. "Certainly! Below is...", "Sure! Here are...")
+    cliche_pattern = r'^(?:(?:Certainly|Sure|Of course|Definitely|Gladly)(?:!|,|\.)?\s*)?(?:(?:Here(?:|\'s)|\bBelow)\s+(?:is|are)\s+[^:\n]+:?\s*)?\n+'
+    text = re.sub(cliche_pattern, '', text, flags=re.IGNORECASE)
 
     stop_markers = [
         "</response>",
