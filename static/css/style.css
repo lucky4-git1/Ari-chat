@@ -806,3 +806,47 @@ kbd {
     break-inside: avoid;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Interactive Side-by-Side Canvas & Preview Button
+───────────────────────────────────────────────────────────── */
+.preview-canvas-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background-color: rgba(139, 92, 246, 0.12);
+  color: #c4b5fd;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preview-canvas-btn:hover {
+  background-color: rgba(139, 92, 246, 0.25);
+  color: #ffffff;
+  transform: translateY(-0.5px);
+}
+
+#chat-form.drag-over {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+  background-color: rgba(99, 102, 241, 0.04) !important;
+}
+
+#canvas-panel {
+  animation: slideLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

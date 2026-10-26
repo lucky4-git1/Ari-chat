@@ -143,10 +143,36 @@
             <i class="fa-solid fa-cloud-arrow-down text-xs"></i>
             <span id="pull-model-btn-text">Pull Ari 3B (1.9 GB)</span>
           </button>
+
+          <!-- Persona Selector Pill -->
+          <div class="relative hidden sm:block">
+            <button type="button" id="persona-btn" class="text-xs px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-zinc-300 hover:text-white" style="border-color: var(--border-subtle)">
+              <span id="persona-icon">⚡</span>
+              <span id="persona-label">General</span>
+              <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+            </button>
+            <div id="persona-dropdown" class="hidden absolute left-0 mt-1.5 w-44 rounded-lg shadow-2xl border p-1 z-50 card-minimal text-xs space-y-0.5 animate-in fade-in zoom-in-95" style="border-color: var(--border-subtle)">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="general" data-icon="⚡">
+                <span>⚡</span><span>General Assistant</span>
+              </button>
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="coder" data-icon="🛠️">
+                <span>🛠️</span><span>Code Architect</span>
+              </button>
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="writer" data-icon="✍️">
+                <span>✍️</span><span>Creative & Copy</span>
+              </button>
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="researcher" data-icon="🔬">
+                <span>🔬</span><span>Research & Science</span>
+              </button>
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="executive" data-icon="💼">
+                <span>💼</span><span>Executive Advisor</span>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="flex items-center gap-1.5 hidden sm:flex">
-          <span id="chat-title" class="text-xs text-zinc-300 font-medium truncate max-w-[200px] cursor-pointer hover:text-white" title="Click to rename">New Chat</span>
+        <div class="flex items-center gap-1.5 hidden lg:flex">
+          <span id="chat-title" class="text-xs text-zinc-300 font-medium truncate max-w-[180px] cursor-pointer hover:text-white" title="Click to rename">New Chat</span>
           <button id="rename-chat-btn" class="text-zinc-500 hover:text-zinc-300 p-1 text-[11px] transition-colors" title="Rename conversation">
             <i class="fa-solid fa-pen text-[10px]"></i>
           </button>
@@ -156,6 +182,10 @@
 
       <!-- Right Action Controls -->
       <div class="flex items-center gap-1.5">
+        <!-- Settings Modal Button (Cloud & Hybrid Models) -->
+        <button id="settings-modal-btn" title="Model & Cloud Settings" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-400 hover:text-current transition-colors" style="border-color: var(--border-subtle)">
+          <i class="fa-solid fa-sliders text-xs"></i>
+        </button>
         <!-- Export Dropdown -->
         <div class="relative">
           <button id="export-menu-btn" title="Export conversation" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-400 hover:text-current transition-colors" style="border-color: var(--border-subtle)">
@@ -202,91 +232,144 @@
       </div>
     </header>
 
-    <!-- Chat Messages Scroll Area -->
-    <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-8 space-y-6">
-      <!-- Welcome Hero (shown when no messages exist) -->
-      <div id="welcome-hero" class="max-w-xl mx-auto text-center py-16 px-4 space-y-6">
-        <div class="w-12 h-12 mx-auto flex items-center justify-center text-current mb-2">
-          <svg viewBox="0 0 64 64" fill="none" class="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
-            <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
-            <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
-          </svg>
-        </div>
-        <div>
-          <h2 class="text-xl font-medium tracking-tight">What would you like to explore?</h2>
-          <p class="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
-            Private, offline intelligence powered by your local Ari engine with memory and web retrieval.
-          </p>
-        </div>
+    <!-- Chat + Canvas Split Container -->
+    <div class="flex-1 flex overflow-hidden min-w-0">
+      <!-- Left: Chat Messages Area -->
+      <div id="chat-column" class="flex-1 flex flex-col h-full min-w-0">
+        <!-- Chat Messages Scroll Area -->
+        <div id="messages-container" class="flex-1 overflow-y-auto px-4 py-8 space-y-6">
+          <!-- Welcome Hero (shown when no messages exist) -->
+          <div id="welcome-hero" class="max-w-xl mx-auto text-center py-16 px-4 space-y-6">
+            <div class="w-12 h-12 mx-auto flex items-center justify-center text-current mb-2">
+              <svg viewBox="0 0 64 64" fill="none" class="w-12 h-12" xmlns="http://www.w3.org/2000/svg">
+                <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+                <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-xl font-medium tracking-tight">What would you like to explore?</h2>
+              <p class="text-xs text-zinc-400 mt-1 max-w-sm mx-auto">
+                Private, offline intelligence powered by your local Ari engine with document analysis, artifacts canvas, and web retrieval.
+              </p>
+            </div>
 
-        <!-- Refined Minimal Suggestion Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
-          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="Write a clean Python function to check whether two strings are anagrams of each other.">
-            <div class="text-xs font-medium mb-0.5">Python Engineering</div>
-            <p class="text-[11px] text-zinc-400">Optimal anagram checker with edge cases</p>
-          </button>
-
-          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="If you have 3 apples and you take away 2, how many apples do you have?">
-            <div class="text-xs font-medium mb-0.5">Logic & Reasoning</div>
-            <p class="text-[11px] text-zinc-400">Step-by-step classic riddle solution</p>
-          </button>
-
-          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="What are the latest breakthrough updates in artificial intelligence today?" data-search="true">
-            <div class="text-xs font-medium mb-0.5">Live Web Search</div>
-            <p class="text-[11px] text-zinc-400">Real-time news with cited web sources</p>
-          </button>
-
-          <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="My name is Alex, I build AI systems in Python, and I prefer concise responses. Remember this!">
-            <div class="text-xs font-medium mb-0.5">Persistent Memory</div>
-            <p class="text-[11px] text-zinc-400">Teach Ari your profile and preferences</p>
-          </button>
-        </div>
-      </div>
-      <!-- Message items dynamically appended here -->
-    </div>
-
-    <!-- Message Input Dock -->
-    <div class="p-4 border-t shrink-0" style="border-color: var(--border-subtle)">
-      <div class="max-w-3xl mx-auto">
-        <form id="chat-form" class="rounded-xl p-3 border shadow-sm transition-all" style="border-color: var(--border-subtle)">
-          <textarea
-            id="message-input"
-            rows="1"
-            placeholder="Ask Ari anything..."
-            class="w-full bg-transparent text-sm resize-none outline-none max-h-36 px-1 py-1 select-text"
-          ></textarea>
-
-          <div class="flex items-center justify-between pt-2.5 px-0.5 border-t mt-1" style="border-color: var(--border-subtle)">
-            <!-- Understated Action Controls -->
-            <div class="flex items-center gap-1.5">
-              <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
-                <i class="fa-solid fa-globe text-[11px]"></i>
-                <span id="quick-search-label" class="text-[11px]">Search</span>
+            <!-- Refined Minimal Suggestion Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left pt-2">
+              <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="Create an interactive HTML and JavaScript Pomodoro timer app with smooth countdown animation.">
+                <div class="text-xs font-medium mb-0.5">Interactive App (Canvas)</div>
+                <p class="text-[11px] text-zinc-400">Renders live in the interactive side-by-side canvas</p>
               </button>
-              
-              <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
-                <i class="fa-solid fa-brain text-[11px]"></i>
-                <span id="quick-reason-label" class="text-[11px]">Reason</span>
+
+              <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="Write a clean Python function to check whether two strings are anagrams of each other.">
+                <div class="text-xs font-medium mb-0.5">Python Engineering</div>
+                <p class="text-[11px] text-zinc-400">Optimal anagram checker with edge cases</p>
+              </button>
+
+              <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="What are the latest breakthrough updates in artificial intelligence today?" data-search="true">
+                <div class="text-xs font-medium mb-0.5">Live Web Search</div>
+                <p class="text-[11px] text-zinc-400">Real-time news with cited web source cards</p>
+              </button>
+
+              <button class="suggestion-card card-minimal p-3 rounded-lg group" data-prompt="My name is Alex, I build AI systems in Python, and I prefer concise responses. Remember this!">
+                <div class="text-xs font-medium mb-0.5">Persistent Memory</div>
+                <p class="text-[11px] text-zinc-400">Teach Ari your profile and preferences</p>
+              </button>
+            </div>
+          </div>
+          <!-- Message items dynamically appended here -->
+        </div>
+
+        <!-- Message Input Dock -->
+        <div class="p-4 border-t shrink-0" style="border-color: var(--border-subtle)">
+          <div class="max-w-3xl mx-auto">
+            <!-- Attached File Chip Preview -->
+            <div id="attached-file-chip" class="hidden flex items-center gap-2 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 w-fit mb-2 animate-in fade-in">
+              <i class="fa-solid fa-file-lines text-xs text-indigo-400"></i>
+              <span id="attached-file-name" class="font-medium max-w-[200px] truncate">file.pdf</span>
+              <span id="attached-file-size" class="text-[10px] text-zinc-400 font-mono">14 KB</span>
+              <button type="button" id="remove-file-btn" class="text-zinc-400 hover:text-rose-400 p-0.5 ml-1 transition-colors" title="Remove attached file">
+                <i class="fa-solid fa-xmark text-[10px]"></i>
               </button>
             </div>
 
-            <button
-              type="submit"
-              id="send-btn"
-              disabled
-              title="Send message"
-              aria-label="Send message"
-              class="w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
-              style="border-color: var(--border-subtle)"
-            >
-              <i class="fa-solid fa-arrow-up text-xs"></i>
+            <form id="chat-form" class="rounded-xl p-3 border shadow-sm transition-all" style="border-color: var(--border-subtle)">
+              <textarea
+                id="message-input"
+                rows="1"
+                placeholder="Ask Ari anything or attach files (PDF, Code, Text)..."
+                class="w-full bg-transparent text-sm resize-none outline-none max-h-36 px-1 py-1 select-text"
+              ></textarea>
+
+              <div class="flex items-center justify-between pt-2.5 px-0.5 border-t mt-1" style="border-color: var(--border-subtle)">
+                <!-- Controls & Attachment -->
+                <div class="flex items-center gap-1.5">
+                  <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.txt,.py,.js,.json,.csv,.md,.html,.sql,.log,.yml,.yaml">
+                  <button type="button" id="attach-file-btn" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)" title="Attach document or code file">
+                    <i class="fa-solid fa-paperclip text-[11px]"></i>
+                    <span class="text-[11px]">Attach</span>
+                  </button>
+
+                  <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                    <i class="fa-solid fa-globe text-[11px]"></i>
+                    <span id="quick-search-label" class="text-[11px]">Search</span>
+                  </button>
+                  
+                  <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                    <i class="fa-solid fa-brain text-[11px]"></i>
+                    <span id="quick-reason-label" class="text-[11px]">Reason</span>
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  id="send-btn"
+                  disabled
+                  title="Send message"
+                  aria-label="Send message"
+                  class="w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
+                  style="border-color: var(--border-subtle)"
+                >
+                  <i class="fa-solid fa-arrow-up text-xs"></i>
+                </button>
+              </div>
+            </form>
+            <p class="text-[11px] text-zinc-400 text-center mt-2">
+              Ari 3B & 1.5B are locally hosted. Verify critical information.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Interactive Canvas / Artifact Panel (Claude-style) -->
+      <aside id="canvas-panel" class="hidden w-full lg:w-[48%] border-l flex flex-col card-minimal z-20 shadow-2xl transition-all duration-300" style="border-color: var(--border-subtle)">
+        <div class="h-12 border-b flex items-center justify-between px-4 shrink-0" style="border-color: var(--border-subtle)">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="canvas-title" class="text-xs font-semibold truncate text-zinc-200">Interactive Preview</span>
+          </div>
+
+          <div class="flex items-center gap-1.5">
+            <div class="flex p-0.5 rounded-lg border text-xs mr-2" style="border-color: var(--border-subtle)">
+              <button id="canvas-tab-preview" class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-zinc-800 text-white">Preview</button>
+              <button id="canvas-tab-code" class="px-2.5 py-0.5 rounded text-[11px] font-medium text-zinc-400 hover:text-white">Code</button>
+            </div>
+            <button id="canvas-copy-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs" title="Copy code">
+              <i class="fa-regular fa-copy"></i>
+            </button>
+            <button id="canvas-download-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs" title="Download artifact">
+              <i class="fa-solid fa-download"></i>
+            </button>
+            <button id="canvas-close-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs ml-1" title="Close canvas">
+              <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
-        </form>
-        <p class="text-[11px] text-zinc-400 text-center mt-2">
-          Ari 3B & 1.5B are locally hosted. Verify critical information.
-        </p>
-      </div>
+        </div>
+
+        <div class="flex-1 relative overflow-hidden bg-zinc-950 flex flex-col">
+          <iframe id="canvas-iframe" class="w-full h-full border-0 bg-white" sandbox="allow-scripts allow-modals"></iframe>
+          <pre id="canvas-code" class="hidden w-full h-full p-4 overflow-auto text-xs font-mono select-text bg-[#0d1117] text-zinc-200"></pre>
+        </div>
+      </aside>
     </div>
   </main>
 
@@ -549,6 +632,66 @@
         <div class="flex items-center justify-between py-1">
           <span class="text-zinc-300">Toggle Deep Reasoning</span>
           <div class="flex items-center gap-1"><kbd>Alt</kbd><span>+</span><kbd>R</kbd></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings / Hybrid Model Modal -->
+  <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-sm text-indigo-400"></i>
+          <h3 class="text-sm font-semibold tracking-tight">Model & Hybrid Cloud Settings</h3>
+        </div>
+        <button id="close-settings-modal-btn" class="text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-medium text-zinc-300 mb-1">Inference Provider</label>
+          <select id="setting-provider" class="w-full bg-zinc-900 border rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
+            <option value="local">Local Ari Engine (100% Free & Offline)</option>
+            <option value="openrouter">OpenRouter (DeepSeek R1, Claude, Llama 3)</option>
+            <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
+            <option value="deepseek">DeepSeek Official (DeepSeek-V3 / R1)</option>
+            <option value="custom">Custom OpenAI-Compatible API</option>
+          </select>
+        </div>
+
+        <div id="cloud-fields" class="space-y-3 hidden">
+          <div>
+            <label class="block font-medium text-zinc-300 mb-1">API Base URL</label>
+            <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
+          </div>
+
+          <div>
+            <label class="block font-medium text-zinc-300 mb-1">API Key</label>
+            <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+            <p class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
+          </div>
+
+          <div>
+            <label class="block font-medium text-zinc-300 mb-1">Model Name / Identifier</label>
+            <input id="setting-model-name" type="text" placeholder="deepseek/deepseek-r1" class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+          </div>
+        </div>
+
+        <div class="p-3 rounded-lg bg-zinc-900/60 border text-[11px] text-zinc-400 space-y-1" style="border-color: var(--border-subtle)">
+          <div class="font-medium text-zinc-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i>
+            <span>Privacy Guarantee</span>
+          </div>
+          <p>Local Ari 3B runs directly on your machine. When using Cloud APIs, requests stream directly through your custom key.</p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
+          <button id="save-settings-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors">
+            Save Settings
+          </button>
         </div>
       </div>
     </div>

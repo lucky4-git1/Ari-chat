@@ -18,7 +18,11 @@ const state = {
   lastUserPrompt: "",
   pinnedConvs: JSON.parse(localStorage.getItem("ari_pinned_convs") || "[]"),
   activeTTSUtterance: null,
-  activeTTSBtn: null
+  activeTTSBtn: null,
+  attachedFile: null,
+  currentPersona: "general",
+  cloudConfig: JSON.parse(localStorage.getItem("ari_cloud_config") || "null"),
+  currentArtifact: null
 };
 
 // DOM Elements
@@ -123,7 +127,40 @@ const DOM = {
   memoriesContainer: document.getElementById("memories-container"),
   memoryCountBadge: document.getElementById("memory-count-badge"),
   memoryToastContainer: document.getElementById("memory-toast-container"),
-  clearAllMemoriesBtn: document.getElementById("clear-all-memories-btn")
+  clearAllMemoriesBtn: document.getElementById("clear-all-memories-btn"),
+
+  // Frontier: Canvas, Persona, File Upload, Settings
+  attachFileBtn: document.getElementById("attach-file-btn"),
+  fileUploadInput: document.getElementById("file-upload-input"),
+  attachedFileChip: document.getElementById("attached-file-chip"),
+  attachedFileName: document.getElementById("attached-file-name"),
+  attachedFileSize: document.getElementById("attached-file-size"),
+  removeFileBtn: document.getElementById("remove-file-btn"),
+
+  canvasPanel: document.getElementById("canvas-panel"),
+  canvasTitle: document.getElementById("canvas-title"),
+  canvasIframe: document.getElementById("canvas-iframe"),
+  canvasCode: document.getElementById("canvas-code"),
+  canvasTabPreview: document.getElementById("canvas-tab-preview"),
+  canvasTabCode: document.getElementById("canvas-tab-code"),
+  canvasCopyBtn: document.getElementById("canvas-copy-btn"),
+  canvasDownloadBtn: document.getElementById("canvas-download-btn"),
+  canvasCloseBtn: document.getElementById("canvas-close-btn"),
+
+  personaBtn: document.getElementById("persona-btn"),
+  personaDropdown: document.getElementById("persona-dropdown"),
+  personaLabel: document.getElementById("persona-label"),
+  personaIcon: document.getElementById("persona-icon"),
+
+  settingsModalBtn: document.getElementById("settings-modal-btn"),
+  settingsModal: document.getElementById("settings-modal"),
+  closeSettingsModalBtn: document.getElementById("close-settings-modal-btn"),
+  settingProvider: document.getElementById("setting-provider"),
+  cloudFields: document.getElementById("cloud-fields"),
+  settingBaseUrl: document.getElementById("setting-base-url"),
+  settingApiKey: document.getElementById("setting-api-key"),
+  settingModelName: document.getElementById("setting-model-name"),
+  saveSettingsBtn: document.getElementById("save-settings-btn")
 };
 
 // Initialize Application
@@ -345,6 +382,12 @@ function setupEventListeners() {
   DOM.startUpdateBtn?.addEventListener("click", handleStartUpdate);
   DOM.cancelUpdateBtn?.addEventListener("click", handleCancelUpdate);
   DOM.applyUpdateBtn?.addEventListener("click", handleApplyUpdate);
+
+  // Frontier Features: Upload, Canvas, Personas, Settings
+  setupFileUpload();
+  setupCanvas();
+  setupPersonaSelector();
+  setupSettingsModal();
 }
 
 function closeMobileSidebar() {
@@ -919,8 +962,15 @@ async function handleSendMessage(e) {
   state.userScrolledUp = false;
   state.lastUserPrompt = text; // Cache for ArrowUp recall (ChatGPT UX)
 
+  const filePayload = state.attachedFile;
+  // Clear attached file chip from input
+  if (state.attachedFile) {
+    state.attachedFile = null;
+    DOM.attachedFileChip?.classList.add("hidden");
+  }
+
   // Render User Message
-  renderMessage({ role: "user", content: text, created_at: new Date().toISOString() });
+  renderMessage({ role: "user", content: text, file_info: filePayload, created_at: new Date().toISOString() });
   scrollToBottom(true);
 
   // Create Assistant Message Placeholder
@@ -951,7 +1001,10 @@ async function handleSendMessage(e) {
         content: text,
         web_search: state.webSearch,
         reasoning_mode: state.reasoningMode,
-        model: DOM.modelSelect.value
+        model: DOM.modelSelect ? DOM.modelSelect.value : "ari-assistant-3b",
+        persona: state.currentPersona || "general",
+        file_context: filePayload || null,
+        cloud_config: state.cloudConfig || null
       })
     });
 
@@ -1402,8 +1455,18 @@ function renderMessage(msg) {
   el.className = "flex gap-3 max-w-3xl mx-auto " + (isUser ? "justify-end" : "");
 
   if (isUser) {
+    let fileBadge = "";
+    if (msg.file_info) {
+      fileBadge = `
+        <div class="flex items-center gap-1.5 text-[11px] mb-1.5 px-2 py-0.5 rounded bg-black/20 text-indigo-200 w-fit">
+          <i class="fa-solid fa-paperclip text-[10px]"></i>
+          <span class="font-medium truncate max-w-[200px]">${escapeHtml(msg.file_info.filename)}</span>
+        </div>
+      `;
+    }
     el.innerHTML = `
       <div class="msg-bubble-user max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-sm select-text">
+        ${fileBadge}
         ${escapeHtml(msg.content)}
       </div>
     `;
@@ -1455,14 +1518,24 @@ function decorateCodeBlocks(container) {
 
     const lang = block.className.match(/language-(\w+)/)?.[1] || "code";
     const header = document.createElement("div");
-    header.className = "code-header";
+    header.className = "code-header flex items-center justify-between";
     header.innerHTML = `
       <span class="font-mono text-[11px] uppercase tracking-wider">${lang}</span>
-      <button class="copy-code-btn text-xs text-slate-400 hover:text-white flex items-center gap-1">
-        <i class="fa-regular fa-copy"></i>
-        <span>Copy</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button class="preview-canvas-btn text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 transition-all hover:bg-indigo-500/20" title="Open in side-by-side interactive canvas">
+          <i class="fa-solid fa-shapes text-[10px]"></i>
+          <span>Canvas</span>
+        </button>
+        <button class="copy-code-btn text-xs text-slate-400 hover:text-white flex items-center gap-1">
+          <i class="fa-regular fa-copy"></i>
+          <span>Copy</span>
+        </button>
+      </div>
     `;
+
+    header.querySelector(".preview-canvas-btn")?.addEventListener("click", () => {
+      openCanvas(block.innerText, lang, `${lang.toUpperCase()} Artifact`);
+    });
 
     header.querySelector(".copy-code-btn").addEventListener("click", () => {
       navigator.clipboard.writeText(block.innerText);
@@ -1899,5 +1972,266 @@ async function handleApplyUpdate() {
     DOM.applyUpdateBtn.disabled = false;
     DOM.applyUpdateBtn.textContent = "Restart & Apply Update";
   }
+}
+
+/**
+ * Frontier Upgrades: File Upload, Canvas (Artifacts), Personas, Settings
+ */
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function setupFileUpload() {
+  if (!DOM.attachFileBtn || !DOM.fileUploadInput) return;
+
+  DOM.attachFileBtn.addEventListener("click", () => {
+    DOM.fileUploadInput.click();
+  });
+
+  DOM.fileUploadInput.addEventListener("change", async () => {
+    const file = DOM.fileUploadInput.files[0];
+    if (!file) return;
+    await processFileUpload(file);
+    DOM.fileUploadInput.value = "";
+  });
+
+  DOM.removeFileBtn?.addEventListener("click", () => {
+    state.attachedFile = null;
+    DOM.attachedFileChip?.classList.add("hidden");
+  });
+
+  // Drag and Drop support on chat form
+  if (DOM.chatForm) {
+    DOM.chatForm.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      DOM.chatForm.classList.add("drag-over");
+    });
+
+    ["dragleave", "dragend"].forEach((evt) => {
+      DOM.chatForm.addEventListener(evt, () => {
+        DOM.chatForm.classList.remove("drag-over");
+      });
+    });
+
+    DOM.chatForm.addEventListener("drop", async (e) => {
+      e.preventDefault();
+      DOM.chatForm.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        await processFileUpload(e.dataTransfer.files[0]);
+      }
+    });
+  }
+}
+
+async function processFileUpload(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const prevHtml = DOM.attachFileBtn.innerHTML;
+  try {
+    DOM.attachFileBtn.disabled = true;
+    DOM.attachFileBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Parsing...</span>`;
+
+    const token = API.getToken();
+    const headers = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch("/api/chat/upload-file", {
+      method: "POST",
+      headers,
+      body: formData
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || "Upload failed: " + res.statusText);
+    }
+
+    const data = await res.json();
+    state.attachedFile = data;
+
+    if (DOM.attachedFileName) DOM.attachedFileName.textContent = data.filename;
+    if (DOM.attachedFileSize) DOM.attachedFileSize.textContent = formatBytes(data.size || file.size);
+    DOM.attachedFileChip?.classList.remove("hidden");
+  } catch (err) {
+    alert("Could not process file: " + err.message);
+  } finally {
+    DOM.attachFileBtn.disabled = false;
+    DOM.attachFileBtn.innerHTML = prevHtml;
+  }
+}
+
+function setupCanvas() {
+  DOM.canvasCloseBtn?.addEventListener("click", closeCanvas);
+
+  DOM.canvasTabPreview?.addEventListener("click", () => {
+    DOM.canvasTabPreview.classList.add("bg-zinc-800", "text-white");
+    DOM.canvasTabPreview.classList.remove("text-zinc-400");
+    DOM.canvasTabCode.classList.remove("bg-zinc-800", "text-white");
+    DOM.canvasTabCode.classList.add("text-zinc-400");
+
+    DOM.canvasIframe.classList.remove("hidden");
+    DOM.canvasCode.classList.add("hidden");
+  });
+
+  DOM.canvasTabCode?.addEventListener("click", () => {
+    DOM.canvasTabCode.classList.add("bg-zinc-800", "text-white");
+    DOM.canvasTabCode.classList.remove("text-zinc-400");
+    DOM.canvasTabPreview.classList.remove("bg-zinc-800", "text-white");
+    DOM.canvasTabPreview.classList.add("text-zinc-400");
+
+    DOM.canvasCode.classList.remove("hidden");
+    DOM.canvasIframe.classList.add("hidden");
+  });
+
+  DOM.canvasCopyBtn?.addEventListener("click", () => {
+    if (state.currentArtifact?.code) {
+      navigator.clipboard.writeText(state.currentArtifact.code);
+      const icon = DOM.canvasCopyBtn.querySelector("i");
+      if (icon) icon.className = "fa-solid fa-check text-emerald-400";
+      setTimeout(() => {
+        if (icon) icon.className = "fa-regular fa-copy";
+      }, 2000);
+    }
+  });
+
+  DOM.canvasDownloadBtn?.addEventListener("click", () => {
+    if (!state.currentArtifact?.code) return;
+    const blob = new Blob([state.currentArtifact.code], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const lang = (state.currentArtifact.lang || "").toLowerCase();
+    const ext = lang === "html" ? "html" : (lang === "javascript" || lang === "js" ? "js" : (lang === "svg" ? "svg" : "txt"));
+    a.download = `artifact-${Date.now()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function openCanvas(code, lang = "html", title = "Interactive Preview") {
+  if (!DOM.canvasPanel) return;
+  state.currentArtifact = { code, lang, title };
+  if (DOM.canvasTitle) DOM.canvasTitle.textContent = title;
+
+  const isWebPreview = ["html", "svg", "javascript", "js", "xml"].includes((lang || "").toLowerCase());
+
+  if (isWebPreview) {
+    let htmlContent = code;
+    if (lang.toLowerCase() === "svg") {
+      htmlContent = `<!DOCTYPE html><html><body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#18181b;">${code}</body></html>`;
+    } else if (lang.toLowerCase() === "javascript" || lang.toLowerCase() === "js") {
+      htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><script src="https://cdn.tailwindcss.com"><\/script></head><body class="p-6 bg-zinc-900 text-zinc-100 font-sans"><div id="app"></div><script>${code}<\/script></body></html>`;
+    }
+    DOM.canvasIframe.srcdoc = htmlContent;
+    DOM.canvasTabPreview.click();
+  } else {
+    DOM.canvasTabCode.click();
+  }
+
+  DOM.canvasCode.textContent = code;
+  DOM.canvasPanel.classList.remove("hidden");
+}
+
+function closeCanvas() {
+  if (DOM.canvasPanel) {
+    DOM.canvasPanel.classList.add("hidden");
+    if (DOM.canvasIframe) DOM.canvasIframe.srcdoc = "";
+  }
+}
+
+function setupPersonaSelector() {
+  if (!DOM.personaBtn || !DOM.personaDropdown) return;
+
+  DOM.personaBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    DOM.personaDropdown.classList.toggle("hidden");
+  });
+
+  document.addEventListener("click", () => {
+    DOM.personaDropdown.classList.add("hidden");
+  });
+
+  document.querySelectorAll(".persona-option").forEach((opt) => {
+    opt.addEventListener("click", () => {
+      const persona = opt.getAttribute("data-persona");
+      const icon = opt.getAttribute("data-icon");
+      const label = opt.querySelector("span:last-child")?.textContent || persona;
+
+      state.currentPersona = persona;
+      if (DOM.personaLabel) DOM.personaLabel.textContent = label;
+      if (DOM.personaIcon) DOM.personaIcon.textContent = icon;
+      DOM.personaDropdown.classList.add("hidden");
+    });
+  });
+}
+
+function setupSettingsModal() {
+  if (!DOM.settingsModalBtn || !DOM.settingsModal) return;
+
+  // Populate initial state from localStorage
+  if (state.cloudConfig) {
+    if (DOM.settingProvider) DOM.settingProvider.value = state.cloudConfig.provider || "local";
+    if (DOM.settingBaseUrl) DOM.settingBaseUrl.value = state.cloudConfig.base_url || "";
+    if (DOM.settingApiKey) DOM.settingApiKey.value = state.cloudConfig.api_key || "";
+    if (DOM.settingModelName) DOM.settingModelName.value = state.cloudConfig.model_name || "";
+
+    if (state.cloudConfig.provider && state.cloudConfig.provider !== "local") {
+      DOM.cloudFields?.classList.remove("hidden");
+    }
+  }
+
+  DOM.settingsModalBtn.addEventListener("click", () => {
+    DOM.settingsModal.classList.remove("hidden");
+  });
+
+  DOM.closeSettingsModalBtn?.addEventListener("click", () => {
+    DOM.settingsModal.classList.add("hidden");
+  });
+
+  DOM.settingsModal.addEventListener("click", (e) => {
+    if (e.target === DOM.settingsModal) DOM.settingsModal.classList.add("hidden");
+  });
+
+  DOM.settingProvider?.addEventListener("change", () => {
+    const prov = DOM.settingProvider.value;
+    if (prov === "local") {
+      DOM.cloudFields?.classList.add("hidden");
+    } else {
+      DOM.cloudFields?.classList.remove("hidden");
+      if (prov === "openrouter") {
+        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://openrouter.ai/api/v1";
+        if (!DOM.settingModelName.value) DOM.settingModelName.value = "anthropic/claude-3.5-sonnet";
+      } else if (prov === "deepseek") {
+        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://api.deepseek.com";
+        if (!DOM.settingModelName.value) DOM.settingModelName.value = "deepseek-chat";
+      } else if (prov === "openai") {
+        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://api.openai.com/v1";
+        if (!DOM.settingModelName.value) DOM.settingModelName.value = "gpt-4o";
+      }
+    }
+  });
+
+  DOM.saveSettingsBtn?.addEventListener("click", () => {
+    const prov = DOM.settingProvider?.value || "local";
+    if (prov === "local") {
+      state.cloudConfig = null;
+      localStorage.removeItem("ari_cloud_config");
+    } else {
+      state.cloudConfig = {
+        provider: prov,
+        base_url: DOM.settingBaseUrl?.value.trim() || "",
+        api_key: DOM.settingApiKey?.value.trim() || "",
+        model_name: DOM.settingModelName?.value.trim() || ""
+      };
+      localStorage.setItem("ari_cloud_config", JSON.stringify(state.cloudConfig));
+    }
+    DOM.settingsModal.classList.add("hidden");
+  });
 }
 

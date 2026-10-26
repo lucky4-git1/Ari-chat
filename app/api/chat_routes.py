@@ -1,10 +1,14 @@
 import json
+import os
+import io
+import asyncio
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
+import httpx
 
 from app.db.database import get_db, SessionLocal
 from app.db.models import User, Conversation, Message
@@ -28,6 +32,54 @@ class MessageSendRequest(BaseModel):
     web_search: bool = False
     reasoning_mode: bool = False
     model: Optional[str] = None
+    persona: Optional[str] = "general"
+    file_context: Optional[dict] = None
+    cloud_config: Optional[dict] = None
+
+@router.post("/upload-file")
+async def upload_file_context(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user)
+):
+    """Safely extracts text from uploaded PDF or code/text files for conversational RAG."""
+    filename = file.filename or "uploaded_file"
+    ext = os.path.splitext(filename)[1].lower()
+    content_bytes = await file.read()
+    extracted_text = ""
+
+    if ext == ".pdf":
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(io.BytesIO(content_bytes))
+            pages_text = []
+            for i, page in enumerate(reader.pages[:20]):
+                text = page.extract_text() or ""
+                if text.strip():
+                    pages_text.append(f"--- Page {i+1} ---\n{text}")
+            extracted_text = "\n\n".join(pages_text)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Failed to parse PDF: {str(e)}")
+    else:
+        try:
+            extracted_text = content_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            extracted_text = content_bytes.decode("latin-1", errors="replace")
+
+    # Guard against local context overflow (limit to 12,000 characters)
+    char_limit = 12000
+    truncated = False
+    if len(extracted_text) > char_limit:
+        extracted_text = extracted_text[:char_limit] + "\n\n... [Content truncated for local context budget] ..."
+        truncated = True
+
+    return {
+        "filename": filename,
+        "ext": ext,
+        "size": len(content_bytes),
+        "char_count": len(extracted_text),
+        "truncated": truncated,
+        "content": extracted_text
+    }
 
 @router.get("/conversations")
 def get_conversations(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -119,6 +171,35 @@ def delete_conversation(conv_id: int, user: User = Depends(get_current_user), db
     db.commit()
     return {"status": "deleted", "id": conv_id}
 
+async def stream_cloud_chat(messages: list, base_url: str, api_key: str, model: str):
+    """Streams chat completions from standard OpenAI-compatible cloud providers (OpenRouter, DeepSeek, OpenAI, Groq)."""
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    payload = {"model": model, "messages": messages, "stream": True}
+    target_url = f"{base_url.rstrip('/')}/chat/completions"
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            async with client.stream("POST", target_url, headers=headers, json=payload) as resp:
+                if resp.status_code != 200:
+                    err_bytes = await resp.aread()
+                    yield json.dumps({"error": f"Cloud API error ({resp.status_code}): {err_bytes.decode('utf-8', errors='ignore')}"})
+                    return
+                async for line in resp.aiter_lines():
+                    if line.startswith("data: "):
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            yield json.dumps({"done": True})
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            delta = chunk.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                yield json.dumps({"token": content, "done": False})
+                        except Exception:
+                            continue
+    except Exception as e:
+        yield json.dumps({"error": f"Cloud connection failed: {str(e)}"})
+
 @router.post("/conversations/{conv_id}/messages")
 async def send_message_stream(
     conv_id: int,
@@ -166,6 +247,28 @@ async def send_message_stream(
         search_sources = perform_web_search(req.content.strip())
         search_prompt_block = format_search_context(search_sources)
 
+    # Persona specialization
+    persona_prompts = {
+        "coder": (
+            "Specialized Role: Elite Software Architect & Senior Systems Engineer.\n"
+            "- Implement strict, self-contained, production-ready code with complete type annotations and defensive error handling.\n"
+            "- Avoid conversational filler; begin directly with the code block or architecture overview."
+        ),
+        "writer": (
+            "Specialized Role: Master Narrative Stylist & Copywriter.\n"
+            "- Emphasize lyrical human rhythm, evocative sensory details, emotional resonance, and persuasive rhetoric.\n"
+            "- Avoid corporate clichés and AI jargon."
+        ),
+        "researcher": (
+            "Specialized Role: Principal Academic Researcher & Data Scientist.\n"
+            "- Provide formal, empirical, and analytically rigorous explanations with theoretical context and balanced trade-offs."
+        ),
+        "executive": (
+            "Specialized Role: Executive Strategy Advisor & Chief Operating Officer.\n"
+            "- Deliver high-level, bulleted executive briefs with clear ROI, operational risk trade-offs, and decisive action items."
+        ),
+    }
+
     # 5. Build full message context with Claude/GPT-grade reasoning & presentation directives
     system_prompt = (
         "You are Ari, an exceptionally capable, thoughtful, and articulate AI companion created by Ari AI.\n"
@@ -182,6 +285,10 @@ async def send_message_stream(
         "9. Pure Markdown: NEVER output raw HTML tags (like <div>, <h3>, <ol>, <li>, <p>) in general prose. Use standard Markdown syntax.\n"
         "10. Safety & Ethics: If asked for harmful, dangerous, or illegal instructions, decline politely with a calm, neutral tone and offer safe educational alternatives."
     )
+
+    if req.persona and req.persona in persona_prompts:
+        system_prompt = f"{persona_prompts[req.persona]}\n\n{system_prompt}"
+
     if memory_prompt_block:
         system_prompt += f"\n\n{memory_prompt_block}"
     if search_prompt_block:
@@ -192,10 +299,18 @@ async def send_message_stream(
     # Append conversation history (up to last 10 messages for rich multi-turn context)
     prior_messages = conv.messages[-10:]
     for m in prior_messages:
-        # Sanitize prior assistant messages so historical scrape artifacts never poison future turns
         content = clean_response_text(m.content) if m.role == "assistant" else m.content
         if content:
             ollama_messages.append({"role": m.role, "content": content})
+
+    # Append current turn with file context if attached
+    current_content = req.content.strip()
+    if req.file_context and req.file_context.get("content"):
+        fname = req.file_context.get("filename", "Uploaded File")
+        ftext = req.file_context.get("content", "")
+        file_header = f"--- Attached Document: {fname} ---\n{ftext}\n--- End of Attached Document ---\n\n"
+        current_content = f"{file_header}{req.content.strip()}"
+    ollama_messages.append({"role": "user", "content": current_content})
 
     chosen_model = req.model or conv.model or DEFAULT_MODEL
 
@@ -213,13 +328,25 @@ async def send_message_stream(
             yield f"data: {json.dumps({'type': 'sources', 'sources': search_sources})}\n\n"
 
         full_assistant_reply = []
-        try:
-            async for chunk_str in stream_chat_completion(
+        is_cloud = bool(req.cloud_config and req.cloud_config.get("api_key") and req.cloud_config.get("base_url"))
+        stream_iter = (
+            stream_cloud_chat(
+                messages=ollama_messages,
+                base_url=req.cloud_config["base_url"],
+                api_key=req.cloud_config["api_key"],
+                model=req.cloud_config.get("model") or req.cloud_config.get("model_name") or "gpt-4o"
+            )
+            if is_cloud
+            else stream_chat_completion(
                 messages=ollama_messages,
                 model=chosen_model,
                 reasoning_mode=req.reasoning_mode,
                 max_tokens=max_tokens_limit
-            ):
+            )
+        )
+
+        try:
+            async for chunk_str in stream_iter:
                 try:
                     data = json.loads(chunk_str.strip())
                     if "error" in data:
