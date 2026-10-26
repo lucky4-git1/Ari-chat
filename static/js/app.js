@@ -14,7 +14,11 @@ const state = {
   authMode: "login", // 'login' or 'register'
   modelsData: [],
   modelPullTimer: null,
-  userScrolledUp: false
+  userScrolledUp: false,
+  lastUserPrompt: "",
+  pinnedConvs: JSON.parse(localStorage.getItem("ari_pinned_convs") || "[]"),
+  activeTTSUtterance: null,
+  activeTTSBtn: null
 };
 
 // DOM Elements
@@ -67,12 +71,24 @@ const DOM = {
 
   // Chat Area
   chatTitle: document.getElementById("chat-title"),
+  renameChatBtn: document.getElementById("rename-chat-btn"),
   chatMeta: document.getElementById("chat-meta"),
   messagesContainer: document.getElementById("messages-container"),
   welcomeHero: document.getElementById("welcome-hero"),
   chatForm: document.getElementById("chat-form"),
   messageInput: document.getElementById("message-input"),
   sendBtn: document.getElementById("send-btn"),
+
+  // Export & Utilities
+  exportMenuBtn: document.getElementById("export-menu-btn"),
+  exportDropdown: document.getElementById("export-dropdown"),
+  exportMdBtn: document.getElementById("export-md-btn"),
+  exportPdfBtn: document.getElementById("export-pdf-btn"),
+  copyChatBtn: document.getElementById("copy-chat-btn"),
+  copyChatLabel: document.getElementById("copy-chat-label"),
+  shortcutsModalBtn: document.getElementById("shortcuts-modal-btn"),
+  shortcutsModal: document.getElementById("shortcuts-modal"),
+  closeShortcutsModalBtn: document.getElementById("close-shortcuts-modal-btn"),
 
   // Controls
   toggleSearchBtn: document.getElementById("toggle-search-btn"),
@@ -194,10 +210,68 @@ function setupEventListeners() {
       } else if (DOM.messageInput.value.trim().length > 0) {
         DOM.chatForm.dispatchEvent(new Event("submit"));
       }
+    } else if (e.key === "ArrowUp" && DOM.messageInput.value.trim().length === 0) {
+      // Edit last sent user prompt (ChatGPT signature UX)
+      if (state.lastUserPrompt) {
+        e.preventDefault();
+        DOM.messageInput.value = state.lastUserPrompt;
+        handleInputChange();
+        DOM.messageInput.selectionStart = DOM.messageInput.selectionEnd = DOM.messageInput.value.length;
+      }
     } else if (e.key === "Escape" && state.isGenerating) {
       e.preventDefault();
       stopGeneration();
     }
+  });
+
+  // Global Keyboard Shortcuts
+  window.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+      e.preventDefault();
+      toggleShortcutsModal();
+    } else if (e.altKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      toggleWebSearch();
+    } else if (e.altKey && (e.key === "r" || e.key === "R")) {
+      e.preventDefault();
+      toggleReasoning();
+    } else if (e.key === "Escape") {
+      DOM.shortcutsModal?.classList.add("hidden");
+      DOM.exportDropdown?.classList.add("hidden");
+    }
+  });
+
+  // Inline Title Rename
+  DOM.renameChatBtn?.addEventListener("click", () => {
+    if (state.currentConvId) {
+      promptRenameConversation(state.currentConvId, DOM.chatTitle.textContent);
+    }
+  });
+  DOM.chatTitle?.addEventListener("click", () => {
+    if (state.currentConvId) {
+      promptRenameConversation(state.currentConvId, DOM.chatTitle.textContent);
+    }
+  });
+
+  // Export Menu
+  DOM.exportMenuBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    DOM.exportDropdown?.classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => {
+    DOM.exportDropdown?.classList.add("hidden");
+  });
+  DOM.exportMdBtn?.addEventListener("click", exportConversationAsMarkdown);
+  DOM.exportPdfBtn?.addEventListener("click", printConversation);
+  DOM.copyChatBtn?.addEventListener("click", copyEntireConversation);
+
+  // Shortcuts Modal
+  DOM.shortcutsModalBtn?.addEventListener("click", toggleShortcutsModal);
+  DOM.closeShortcutsModalBtn?.addEventListener("click", () => {
+    DOM.shortcutsModal?.classList.add("hidden");
+  });
+  DOM.shortcutsModal?.addEventListener("click", (e) => {
+    if (e.target === DOM.shortcutsModal) DOM.shortcutsModal.classList.add("hidden");
   });
 
   DOM.chatForm?.addEventListener("submit", (e) => {
@@ -631,6 +705,16 @@ async function loadConversations() {
   }
 }
 
+function togglePinConversation(id) {
+  if (state.pinnedConvs.includes(id)) {
+    state.pinnedConvs = state.pinnedConvs.filter((pid) => pid !== id);
+  } else {
+    state.pinnedConvs.push(id);
+  }
+  localStorage.setItem("ari_pinned_convs", JSON.stringify(state.pinnedConvs));
+  renderConversationsList();
+}
+
 function renderConversationsList(filter = "") {
   DOM.conversationsList.innerHTML = "";
   const filtered = state.conversations.filter((c) =>
@@ -645,10 +729,20 @@ function renderConversationsList(filter = "") {
     return;
   }
 
+  // Sort pinned conversations to the top
+  filtered.sort((a, b) => {
+    const aPin = state.pinnedConvs.includes(a.id);
+    const bPin = state.pinnedConvs.includes(b.id);
+    if (aPin && !bPin) return -1;
+    if (!aPin && bPin) return 1;
+    return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
+  });
+
   filtered.forEach((conv) => {
     const isActive = conv.id === state.currentConvId;
+    const isPinned = state.pinnedConvs.includes(conv.id);
     const item = document.createElement("div");
-    item.className = `group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${
+    item.className = `conv-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${isPinned ? "pinned " : ""}${
       isActive
         ? "bg-[#252938] text-white font-medium border border-indigo-500/30"
         : "text-slate-400 hover:bg-[#20232e] hover:text-slate-200"
@@ -656,10 +750,13 @@ function renderConversationsList(filter = "") {
 
     item.innerHTML = `
       <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        <i class="fa-regular fa-message text-[11px] ${isActive ? "text-indigo-400" : "text-slate-500"}"></i>
+        <i class="${isPinned ? "fa-solid fa-thumbtack text-amber-400" : "fa-regular fa-message"} text-[11px] ${isActive ? "text-indigo-400" : "text-slate-500"}"></i>
         <span class="truncate">${escapeHtml(conv.title)}</span>
       </div>
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button class="pin-conv-btn p-1 ${isPinned ? "text-amber-400" : "hover:text-amber-400"}" title="${isPinned ? "Unpin chat" : "Pin chat"}">
+          <i class="fa-solid fa-thumbtack text-[10px]"></i>
+        </button>
         <button class="rename-conv-btn p-1 hover:text-indigo-400" title="Rename"><i class="fa-solid fa-pen text-[10px]"></i></button>
         <button class="delete-conv-btn p-1 hover:text-rose-400" title="Delete"><i class="fa-solid fa-trash text-[10px]"></i></button>
       </div>
@@ -670,6 +767,11 @@ function renderConversationsList(filter = "") {
         selectConversation(conv.id);
         closeMobileSidebar();
       }
+    });
+
+    item.querySelector(".pin-conv-btn")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      togglePinConversation(conv.id);
     });
 
     item.querySelector(".rename-conv-btn")?.addEventListener("click", (e) => {
@@ -815,6 +917,7 @@ async function handleSendMessage(e) {
   state.abortController = new AbortController();
   setGenerationState(true);
   state.userScrolledUp = false;
+  state.lastUserPrompt = text; // Cache for ArrowUp recall (ChatGPT UX)
 
   // Render User Message
   renderMessage({ role: "user", content: text, created_at: new Date().toISOString() });
@@ -834,6 +937,7 @@ async function handleSendMessage(e) {
   let fullResponse = "";
   let insideThought = false;
   let thoughtBuffer = "";
+  let reasoningStartTime = null;
 
   try {
     const response = await fetch(`/api/chat/conversations/${state.currentConvId}/messages`, {
@@ -879,18 +983,10 @@ async function handleSendMessage(e) {
               showMemoryToast(data.memory);
             }
 
-            // 1. Web Sources
+            // 1. Web Sources (Perplexity-grade cards)
             if (data.type === "sources" && data.sources) {
               sourcesContainer.classList.remove("hidden");
-              sourcesContainer.innerHTML = data.sources
-                .map(
-                  (s, i) =>
-                    `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-pill" title="${escapeHtml(s.title)}">
-                      <i class="fa-solid fa-link text-[10px]"></i>
-                      <span>${escapeHtml(s.title)}</span>
-                    </a>`
-                )
-                .join("");
+              sourcesContainer.innerHTML = formatSourceCards(data.sources);
             }
 
             // 2. Token Stream
@@ -905,7 +1001,9 @@ async function handleSendMessage(e) {
               // Check reasoning tags
               if (tok.includes("<thought>")) {
                 insideThought = true;
+                reasoningStartTime = Date.now();
                 reasoningBox.classList.remove("hidden");
+                reasoningBox.setAttribute("open", "true");
               }
 
               if (insideThought) {
@@ -914,14 +1012,20 @@ async function handleSendMessage(e) {
                   const parts = tok.split("</thought>");
                   thoughtBuffer += parts[0].replace("<thought>", "");
                   reasoningText.textContent = thoughtBuffer;
+                  const thoughtDuration = ((Date.now() - (reasoningStartTime || Date.now())) / 1000).toFixed(1);
+                  const summaryEl = reasoningBox.querySelector("summary");
+                  if (summaryEl) summaryEl.innerHTML = `<i class="fa-solid fa-brain text-purple-400 text-xs"></i> Thought for ${thoughtDuration}s`;
                   fullResponse += parts[1];
                 } else {
                   thoughtBuffer += tok.replace("<thought>", "");
                   reasoningText.textContent = thoughtBuffer;
+                  const elapsedSec = ((Date.now() - (reasoningStartTime || Date.now())) / 1000).toFixed(1);
+                  const summaryEl = reasoningBox.querySelector("summary");
+                  if (summaryEl) summaryEl.innerHTML = `<i class="fa-solid fa-brain text-purple-400 text-xs animate-pulse"></i> Thinking (${elapsedSec}s)...`;
                 }
               } else {
                 fullResponse += tok;
-                bodyEl.innerHTML = marked.parse(fullResponse) + `<span class="cursor-blink"></span>`;
+                renderMarkdownStream(bodyEl, fullResponse);
               }
               scrollToBottom();
             }
@@ -1044,6 +1148,175 @@ function createAssistantPlaceholder() {
   return el;
 }
 
+let streamHighlightDebounce = null;
+function renderMarkdownStream(bodyEl, text) {
+  if (!bodyEl) return;
+  bodyEl.innerHTML = marked.parse(text) + `<span class="cursor-blink"></span>`;
+  if (!streamHighlightDebounce) {
+    streamHighlightDebounce = setTimeout(() => {
+      decorateCodeBlocks(bodyEl);
+      streamHighlightDebounce = null;
+    }, 250);
+  }
+}
+
+function formatSourceCards(sources) {
+  if (!sources || !sources.length) return "";
+  return `
+    <div class="sources-container">
+      ${sources
+        .map((s, i) => {
+          let domain = "source";
+          try {
+            domain = new URL(s.url).hostname.replace(/^www\./, "");
+          } catch (e) {}
+          const faviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
+          return `
+            <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-card" title="${escapeHtml(s.title || domain)}">
+              <div class="source-card-header">
+                <img src="${faviconUrl}" alt="" class="w-3.5 h-3.5 rounded-sm" onerror="this.style.display='none'">
+                <span class="source-card-domain">${escapeHtml(domain)}</span>
+                <span class="source-card-num">${i + 1}</span>
+              </div>
+              <div class="source-card-title">${escapeHtml(s.title || domain)}</div>
+            </a>
+          `;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function toggleTextToSpeech(markdownText, btn) {
+  if (!("speechSynthesis" in window)) {
+    alert("Text-to-speech is not supported in this browser.");
+    return;
+  }
+
+  // If already speaking this message, stop
+  if (state.activeTTSBtn === btn && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    resetTTSButton(btn);
+    state.activeTTSBtn = null;
+    return;
+  }
+
+  // If speaking another message, cancel first
+  if (window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    if (state.activeTTSBtn) resetTTSButton(state.activeTTSBtn);
+  }
+
+  // Clean markdown for natural, fluent narration
+  const cleanSpeechText = markdownText
+    .replace(/```[\s\S]*?```/g, "Code block omitted.")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/[#*_~>|]/g, "")
+    .replace(/\$\$.*?\$\$/g, "mathematical formula")
+    .replace(/\$.*?\$/g, "formula")
+    .trim();
+
+  const utterance = new SpeechSynthesisUtterance(cleanSpeechText);
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  btn.classList.add("tts-active");
+  btn.innerHTML = `<i class="fa-solid fa-stop text-xs"></i><span class="text-[11px] tts-btn-label">Stop</span>`;
+  state.activeTTSBtn = btn;
+
+  utterance.onend = () => {
+    resetTTSButton(btn);
+    if (state.activeTTSBtn === btn) state.activeTTSBtn = null;
+  };
+
+  utterance.onerror = () => {
+    resetTTSButton(btn);
+    if (state.activeTTSBtn === btn) state.activeTTSBtn = null;
+  };
+
+  window.speechSynthesis.speak(utterance);
+}
+
+function resetTTSButton(btn) {
+  if (!btn) return;
+  btn.classList.remove("tts-active");
+  btn.innerHTML = `<i class="fa-solid fa-volume-high text-xs"></i><span class="text-[11px] tts-btn-label">Read aloud</span>`;
+}
+
+function toggleShortcutsModal() {
+  if (!DOM.shortcutsModal) return;
+  DOM.shortcutsModal.classList.toggle("hidden");
+}
+
+async function exportConversationAsMarkdown() {
+  DOM.exportDropdown?.classList.add("hidden");
+  if (!state.currentConvId) return;
+  try {
+    const detail = await API.getConversation(state.currentConvId);
+    let md = `# ${detail.title}\n\n`;
+    md += `- **Date:** ${new Date(detail.created_at || Date.now()).toLocaleDateString()}\n`;
+    md += `- **Model:** ${detail.model || "Ari 3B"}\n`;
+    md += `- **Total Messages:** ${detail.messages.length}\n\n`;
+    md += `---\n\n`;
+
+    detail.messages.forEach((m) => {
+      const sender = m.role === "user" ? "### User" : "### Ari";
+      md += `${sender}\n\n${m.content}\n\n`;
+      if (m.sources && m.sources.length) {
+        md += `*Sources:*\n`;
+        m.sources.forEach((s) => {
+          md += `- [${s.title}](${s.url})\n`;
+        });
+        md += `\n`;
+      }
+      md += `---\n\n`;
+    });
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeTitle = (detail.title || "conversation").replace(/[^a-zA-Z0-9_\-]/g, "_").toLowerCase();
+    a.download = `${safeTitle}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error("Export error:", err);
+    alert("Failed to export markdown: " + err.message);
+  }
+}
+
+function printConversation() {
+  DOM.exportDropdown?.classList.add("hidden");
+  window.print();
+}
+
+async function copyEntireConversation() {
+  DOM.exportDropdown?.classList.add("hidden");
+  if (!state.currentConvId) return;
+  try {
+    const detail = await API.getConversation(state.currentConvId);
+    let fullText = `${detail.title}\n\n`;
+    detail.messages.forEach((m) => {
+      const sender = m.role === "user" ? "User" : "Ari";
+      fullText += `[${sender}]:\n${m.content}\n\n`;
+    });
+    navigator.clipboard.writeText(fullText.trim());
+    if (DOM.copyChatLabel) {
+      const original = DOM.copyChatLabel.textContent;
+      DOM.copyChatLabel.textContent = "Copied Entire Chat!";
+      setTimeout(() => {
+        if (DOM.copyChatLabel) DOM.copyChatLabel.textContent = original;
+      }, 2000);
+    }
+  } catch (err) {
+    console.error("Copy conversation error:", err);
+  }
+}
+
 function attachMessageActionBar(container, markdownText, userPrompt) {
   if (!container) return;
   if (container.querySelector(".msg-action-bar")) return; // prevent duplicate bars
@@ -1055,6 +1328,10 @@ function attachMessageActionBar(container, markdownText, userPrompt) {
     <button class="msg-action-btn copy-msg-btn" title="Copy response">
       <i class="fa-regular fa-copy text-xs"></i>
       <span class="text-[11px]">Copy</span>
+    </button>
+    <button class="msg-action-btn tts-msg-btn" title="Read aloud">
+      <i class="fa-solid fa-volume-high text-xs"></i>
+      <span class="text-[11px] tts-btn-label">Read aloud</span>
     </button>
     ${userPrompt ? `
     <button class="msg-action-btn regen-msg-btn" title="Regenerate response">
@@ -1079,6 +1356,14 @@ function attachMessageActionBar(container, markdownText, userPrompt) {
       setTimeout(() => {
         copyBtn.innerHTML = `<i class="fa-regular fa-copy text-xs"></i><span class="text-[11px]">Copy</span>`;
       }, 2000);
+    });
+  }
+
+  // TTS Read Aloud handler
+  const ttsBtn = actionBar.querySelector(".tts-msg-btn");
+  if (ttsBtn) {
+    ttsBtn.addEventListener("click", () => {
+      toggleTextToSpeech(markdownText, ttsBtn);
     });
   }
 
@@ -1123,28 +1408,13 @@ function renderMessage(msg) {
       </div>
     `;
   } else {
-    let sourcesHtml = "";
-    if (msg.sources && msg.sources.length > 0) {
-      sourcesHtml = `
-        <div class="sources-container">
-          ${msg.sources
-            .map(
-              (s, i) =>
-                `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener" class="source-pill" title="${escapeHtml(s.title)}">
-                  <i class="fa-solid fa-link text-[10px]"></i>
-                  <span>${escapeHtml(s.title)}</span>
-                </a>`
-            )
-            .join("")}
-        </div>
-      `;
-    }
+    const sourcesHtml = formatSourceCards(msg.sources);
 
     let reasoningHtml = "";
     if (msg.reasoning) {
       reasoningHtml = `
         <details class="reasoning-box">
-          <summary><i class="fa-solid fa-brain text-xs"></i> Thought process</summary>
+          <summary><i class="fa-solid fa-brain text-purple-400 text-xs"></i> Thought process</summary>
           <div class="reasoning-text">${escapeHtml(msg.reasoning)}</div>
         </details>
       `;

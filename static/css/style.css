@@ -590,3 +590,219 @@ html:not(.dark) select option, html:not(.dark) #model-select option {
     transform: scale(1.07);
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Perplexity-Grade Search Sources & Favicon Cards
+───────────────────────────────────────────────────────────── */
+.sources-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  animation: fadeIn 0.25s ease;
+}
+
+.source-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 175px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--card-bg);
+  text-decoration: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.source-card:hover {
+  border-color: var(--text-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12);
+}
+
+.source-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.source-card-domain {
+  font-weight: 500;
+  text-transform: lowercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-card-num {
+  margin-left: auto;
+  font-size: 9px;
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.source-card-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   DeepSeek / Claude 3.7 Collapsible Thinking Box
+───────────────────────────────────────────────────────────── */
+.reasoning-box {
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.04);
+  overflow: hidden;
+  transition: all 0.25s ease;
+}
+
+.reasoning-box summary {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.15s ease;
+}
+
+.reasoning-box summary:hover {
+  color: var(--text-primary);
+}
+
+.reasoning-box[open] {
+  background-color: rgba(139, 92, 246, 0.06);
+}
+
+.reasoning-text {
+  padding: 0 12px 12px 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Read Aloud Speaking Audio Pulse
+───────────────────────────────────────────────────────────── */
+.msg-action-btn.tts-active {
+  color: #10b981 !important;
+  background-color: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.msg-action-btn.tts-active i {
+  animation: pulse-audio 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse-audio {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Keyboard Shortcuts <kbd> Styling
+───────────────────────────────────────────────────────────── */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  padding: 2.5px 6px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-primary);
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.12);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Pinned Conversation in Sidebar
+───────────────────────────────────────────────────────────── */
+.conv-item.pinned {
+  border-left: 2px solid #f59e0b;
+}
+
+.conv-item .pin-conv-btn {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.conv-item:hover .pin-conv-btn,
+.conv-item.pinned .pin-conv-btn {
+  opacity: 1;
+}
+
+.conv-item.pinned .pin-conv-btn i {
+  color: #f59e0b;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Print / PDF Stylesheet
+───────────────────────────────────────────────────────────── */
+@media print {
+  #sidebar,
+  #sidebar-backdrop,
+  header,
+  #composer-wrapper,
+  .msg-action-bar,
+  .sources-container,
+  #welcome-hero,
+  #update-modal,
+  #auth-modal,
+  #shortcuts-modal,
+  #memory-modal,
+  #model-pull-modal,
+  #pull-model-btn,
+  #theme-toggle-btn {
+    display: none !important;
+  }
+
+  body, html, main, #messages-container {
+    height: auto !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 0 !important;
+  }
+
+  .markdown-body {
+    font-size: 11pt !important;
+    line-height: 1.6 !important;
+    color: #111827 !important;
+  }
+
+  .markdown-body pre {
+    border: 1px solid #e5e7eb !important;
+    background-color: #f9fafb !important;
+    color: #111827 !important;
+    break-inside: avoid;
+  }
+
+  .markdown-body table {
+    border-color: #e5e7eb !important;
+    break-inside: avoid;
+  }
+}
