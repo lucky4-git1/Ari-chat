@@ -241,6 +241,13 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
     # If we are currently inside a code block (``` or open <style>/<script>), 
     # skip natural language paragraph/sentence deduplication to allow CSS/HTML/code structures
     in_code = (text.count("```") % 2 == 1)
+    if in_code:
+        # If the open fence is ```markdown or ```md (which often wraps tables or prose), treat as prose
+        last_fence = text.rfind("```")
+        fence_lang = text[last_fence:last_fence+25].split('\n')[0].strip('`').strip().lower()
+        if fence_lang in ('markdown', 'md'):
+            in_code = False
+
     lower = text.lower()
     if not in_code:
         for tag in ["<style", "<script", "<svg"]:
@@ -250,13 +257,21 @@ def detect_repetition(text: str, threshold: int = 3) -> Optional[str]:
                 break
 
     if in_code:
-        # Only detect extreme runaway repetition (same code chunk repeated 5+ times)
+        # Detect repeated lines in code blocks (e.g. repeated table rows, loop iterations)
+        code_lines = [line.strip() for line in text.split('\n') if len(line.strip()) >= 15]
+        seen_lines = {}
+        for line in code_lines:
+            seen_lines[line] = seen_lines.get(line, 0) + 1
+            if seen_lines[line] >= 4:
+                return line
+
+        # Detect runaway repetition in code chunks (same chunk repeated 4+ times)
         for l in range(10, 80):
-            if len(text) >= l * 5:
+            if len(text) >= l * 4:
                 pattern = text[-l:]
                 if not pattern.strip() or not any(c.isalnum() for c in pattern):
                     continue
-                if text.endswith(pattern * 5):
+                if text.endswith(pattern * 4):
                     return pattern
         return None
 
@@ -462,7 +477,14 @@ def clean_response_text(text: str) -> str:
         text = text[:20 + reintro_match.start()]
 
     # Strip unnecessary outer ```markdown ... ``` wrappers so tables and prose render directly as styled rich content
-    text = re.sub(r'^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$', r'\1', text.strip(), flags=re.IGNORECASE)
+    stripped = text.strip()
+    if re.match(r'^```(?:markdown|md)\b\s*\n', stripped, flags=re.IGNORECASE):
+        unwrapped = re.sub(r'^```(?:markdown|md)\b\s*\n', '', stripped, flags=re.IGNORECASE)
+        unwrapped = re.sub(r'\n```\s*$', '', unwrapped.rstrip())
+        if unwrapped.count("```") % 2 == 0:
+            text = unwrapped
+    else:
+        text = re.sub(r'^```(?:markdown|md)?\s*\n([\s\S]*?)\n```\s*$', r'\1', stripped, flags=re.IGNORECASE)
 
     # Handle HTML formatting:
     # 1. If it's a full raw HTML document/webpage and not fenced, wrap it in an html code block
