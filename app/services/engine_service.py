@@ -379,9 +379,26 @@ def clean_response_text(text: str) -> str:
     # Strip opening synthetic wrappers if present
     text = re.sub(r'^(<response>|<answer>)\s*', '', text, flags=re.IGNORECASE)
 
-    # Strip opening conversational clichés (e.g. "Certainly! Below is...", "Sure! Here are...")
-    cliche_pattern = r'^(?:(?:Certainly|Sure|Of course|Definitely|Gladly)(?:!|,|\.)?\s*)?(?:(?:Here(?:|\'s)|\bBelow)\s+(?:is|are)\s+[^:\n]+:?\s*)?\n+'
-    text = re.sub(cliche_pattern, '', text, flags=re.IGNORECASE)
+    # Strip opening conversational clichés (e.g. "Certainly! Here is...", "Sure! I'd be glad to help...")
+    lines = text.split('\n')
+    while lines:
+        first_line = lines[0].strip()
+        first_lower = first_line.lower()
+        if not first_line:
+            lines.pop(0)
+            continue
+        is_cliche = any(first_lower.startswith(prefix) for prefix in [
+            "certainly", "sure", "of course", "definitely", "gladly", "absolutely",
+            "here is", "here are", "here's", "here’s", "heres",
+            "below is", "below are", "the following is", "the following are",
+            "i'd be happy to", "i would be happy to", "i'd be glad to", "i would be glad to",
+            "to help you", "as an ai", "as a language model"
+        ])
+        if is_cliche and (first_line.endswith(':') or len(first_line) < 140):
+            lines.pop(0)
+        else:
+            break
+    text = '\n'.join(lines).lstrip()
 
     stop_markers = [
         "</response>",
