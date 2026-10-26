@@ -655,11 +655,21 @@
           <label class="block font-medium text-zinc-300 mb-1">Inference Provider</label>
           <select id="setting-provider" class="w-full bg-zinc-900 border rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
             <option value="local">Local Ari Engine (100% Free & Offline)</option>
-            <option value="openrouter">OpenRouter (DeepSeek R1, Claude, Llama 3)</option>
-            <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
+            <option value="nvidia">NVIDIA NIM (Free 1,000 Credits — Llama 3.3 70B, DeepSeek R1, Nemotron)</option>
+            <option value="groq">Groq Cloud (Blazing Fast Free Tier — Llama 3.3 70B, DeepSeek R1 Distill)</option>
+            <option value="gemini">Google Gemini AI Studio (Free Tier — Gemini 2.0 Flash / 1.5 Pro)</option>
+            <option value="cerebras">Cerebras Inference (Ultra Fast Free Tier — Llama 3.3 70B)</option>
+            <option value="pollinations">Pollinations AI (100% Free — No API Key Needed!)</option>
+            <option value="openrouter_free">OpenRouter Free Models (Llama 3.3 :free, DeepSeek R1 :free)</option>
+            <option value="openrouter">OpenRouter Standard (Claude 3.5 Sonnet, GPT-4o, DeepSeek R1)</option>
             <option value="deepseek">DeepSeek Official (DeepSeek-V3 / R1)</option>
+            <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
             <option value="custom">Custom OpenAI-Compatible API</option>
           </select>
+          <div id="provider-hint-box" class="hidden mt-1.5 p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-300 flex items-center justify-between">
+            <span id="provider-hint-text">Get free credits at build.nvidia.com</span>
+            <a id="provider-hint-link" href="#" target="_blank" class="underline font-semibold ml-2 hover:text-white shrink-0">Get Free Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+          </div>
         </div>
 
         <div id="cloud-fields" class="space-y-3 hidden">
@@ -668,10 +678,10 @@
             <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
           </div>
 
-          <div>
+          <div id="api-key-group">
             <label class="block font-medium text-zinc-300 mb-1">API Key</label>
             <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
-            <p class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
+            <p id="api-key-subtext" class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
           </div>
 
           <div>

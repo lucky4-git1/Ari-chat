@@ -156,9 +156,14 @@ const DOM = {
   settingsModal: document.getElementById("settings-modal"),
   closeSettingsModalBtn: document.getElementById("close-settings-modal-btn"),
   settingProvider: document.getElementById("setting-provider"),
+  providerHintBox: document.getElementById("provider-hint-box"),
+  providerHintText: document.getElementById("provider-hint-text"),
+  providerHintLink: document.getElementById("provider-hint-link"),
   cloudFields: document.getElementById("cloud-fields"),
   settingBaseUrl: document.getElementById("setting-base-url"),
   settingApiKey: document.getElementById("setting-api-key"),
+  apiKeyGroup: document.getElementById("api-key-group"),
+  apiKeySubtext: document.getElementById("api-key-subtext"),
   settingModelName: document.getElementById("setting-model-name"),
   saveSettingsBtn: document.getElementById("save-settings-btn")
 };
@@ -2171,18 +2176,153 @@ function setupPersonaSelector() {
   });
 }
 
+const PROVIDER_PRESETS = {
+  local: {
+    name: "Local Ari Engine",
+    baseUrl: "",
+    model: "",
+    needsKey: false,
+    hintText: "100% private, runs offline directly on your machine.",
+    linkText: "",
+    linkUrl: ""
+  },
+  nvidia: {
+    name: "NVIDIA NIM",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    model: "meta/llama-3.3-70b-instruct",
+    needsKey: true,
+    hintText: "Free 1,000 credits on signup (Llama 3.3 70B, DeepSeek R1, Nemotron).",
+    linkText: "Get NVIDIA Key",
+    linkUrl: "https://build.nvidia.com"
+  },
+  groq: {
+    name: "Groq Cloud",
+    baseUrl: "https://api.groq.com/openai/v1",
+    model: "llama-3.3-70b-versatile",
+    needsKey: true,
+    hintText: "Generous free tier with ultra-fast ~500 tok/s LPU inference.",
+    linkText: "Get Groq Key",
+    linkUrl: "https://console.groq.com/keys"
+  },
+  gemini: {
+    name: "Google Gemini AI Studio",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    model: "gemini-2.0-flash",
+    needsKey: true,
+    hintText: "Free 15 RPM / 1M TPM quota with cutting-edge reasoning.",
+    linkText: "Get Gemini Key",
+    linkUrl: "https://aistudio.google.com/app/apikey"
+  },
+  cerebras: {
+    name: "Cerebras Inference",
+    baseUrl: "https://api.cerebras.ai/v1",
+    model: "llama-3.3-70b",
+    needsKey: true,
+    hintText: "World's fastest inference (~1,800 tok/s) with free tier.",
+    linkText: "Get Cerebras Key",
+    linkUrl: "https://cloud.cerebras.ai"
+  },
+  pollinations: {
+    name: "Pollinations AI",
+    baseUrl: "https://text.pollinations.ai/openai",
+    model: "openai",
+    needsKey: false,
+    hintText: "100% Free public community endpoint. Zero key or signup needed!",
+    linkText: "Visit Pollinations",
+    linkUrl: "https://pollinations.ai"
+  },
+  openrouter_free: {
+    name: "OpenRouter Free Models",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "meta-llama/llama-3.3-70b-instruct:free",
+    needsKey: true,
+    hintText: "Access free top-tier models with $0 balance (:free tags).",
+    linkText: "Get OpenRouter Key",
+    linkUrl: "https://openrouter.ai/keys"
+  },
+  openrouter: {
+    name: "OpenRouter Standard",
+    baseUrl: "https://openrouter.ai/api/v1",
+    model: "anthropic/claude-3.5-sonnet",
+    needsKey: true,
+    hintText: "Unified gateway to Claude 3.5 Sonnet, GPT-4o, and DeepSeek R1.",
+    linkText: "Get OpenRouter Key",
+    linkUrl: "https://openrouter.ai/keys"
+  },
+  deepseek: {
+    name: "DeepSeek Official",
+    baseUrl: "https://api.deepseek.com",
+    model: "deepseek-chat",
+    needsKey: true,
+    hintText: "Affordable state-of-the-art DeepSeek-V3 and DeepSeek-R1.",
+    linkText: "Get DeepSeek Key",
+    linkUrl: "https://platform.deepseek.com"
+  },
+  openai: {
+    name: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-4o",
+    needsKey: true,
+    hintText: "Official OpenAI frontier models (GPT-4o, o1, o3-mini).",
+    linkText: "Get OpenAI Key",
+    linkUrl: "https://platform.openai.com/api-keys"
+  },
+  custom: {
+    name: "Custom OpenAI-Compatible API",
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.2",
+    needsKey: false,
+    hintText: "Connect any local or self-hosted OpenAI-compatible server (vLLM, Ollama, LM Studio).",
+    linkText: "",
+    linkUrl: ""
+  }
+};
+
+function updateProviderHint(prov) {
+  const preset = PROVIDER_PRESETS[prov] || PROVIDER_PRESETS.custom;
+  if (!DOM.providerHintBox) return;
+
+  if (prov === "local") {
+    DOM.providerHintBox.classList.add("hidden");
+    return;
+  }
+
+  DOM.providerHintBox.classList.remove("hidden");
+  if (DOM.providerHintText) DOM.providerHintText.textContent = preset.hintText;
+
+  if (preset.linkUrl && DOM.providerHintLink) {
+    DOM.providerHintLink.href = preset.linkUrl;
+    DOM.providerHintLink.textContent = preset.linkText || "Get Free Key";
+    DOM.providerHintLink.classList.remove("hidden");
+  } else if (DOM.providerHintLink) {
+    DOM.providerHintLink.classList.add("hidden");
+  }
+
+  if (DOM.settingApiKey) {
+    if (!preset.needsKey) {
+      DOM.settingApiKey.placeholder = "Not required (Leave empty or 'none')";
+      if (DOM.apiKeySubtext) DOM.apiKeySubtext.textContent = "API key is not required for this provider.";
+    } else {
+      DOM.settingApiKey.placeholder = "sk-...";
+      if (DOM.apiKeySubtext) DOM.apiKeySubtext.textContent = "Stored securely in your local browser storage only.";
+    }
+  }
+}
+
 function setupSettingsModal() {
   if (!DOM.settingsModalBtn || !DOM.settingsModal) return;
 
   // Populate initial state from localStorage
   if (state.cloudConfig) {
-    if (DOM.settingProvider) DOM.settingProvider.value = state.cloudConfig.provider || "local";
+    const prov = state.cloudConfig.provider || "local";
+    if (DOM.settingProvider) DOM.settingProvider.value = prov;
     if (DOM.settingBaseUrl) DOM.settingBaseUrl.value = state.cloudConfig.base_url || "";
     if (DOM.settingApiKey) DOM.settingApiKey.value = state.cloudConfig.api_key || "";
     if (DOM.settingModelName) DOM.settingModelName.value = state.cloudConfig.model_name || "";
 
-    if (state.cloudConfig.provider && state.cloudConfig.provider !== "local") {
+    if (prov !== "local") {
       DOM.cloudFields?.classList.remove("hidden");
+      updateProviderHint(prov);
     }
   }
 
@@ -2200,19 +2340,20 @@ function setupSettingsModal() {
 
   DOM.settingProvider?.addEventListener("change", () => {
     const prov = DOM.settingProvider.value;
+    const preset = PROVIDER_PRESETS[prov] || PROVIDER_PRESETS.custom;
+
     if (prov === "local") {
       DOM.cloudFields?.classList.add("hidden");
+      DOM.providerHintBox?.classList.add("hidden");
     } else {
       DOM.cloudFields?.classList.remove("hidden");
-      if (prov === "openrouter") {
-        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://openrouter.ai/api/v1";
-        if (!DOM.settingModelName.value) DOM.settingModelName.value = "anthropic/claude-3.5-sonnet";
-      } else if (prov === "deepseek") {
-        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://api.deepseek.com";
-        if (!DOM.settingModelName.value) DOM.settingModelName.value = "deepseek-chat";
-      } else if (prov === "openai") {
-        if (!DOM.settingBaseUrl.value) DOM.settingBaseUrl.value = "https://api.openai.com/v1";
-        if (!DOM.settingModelName.value) DOM.settingModelName.value = "gpt-4o";
+      updateProviderHint(prov);
+
+      // Auto-populate recommended URL and model
+      if (preset.baseUrl) DOM.settingBaseUrl.value = preset.baseUrl;
+      if (preset.model) DOM.settingModelName.value = preset.model;
+      if (!preset.needsKey && !DOM.settingApiKey.value) {
+        DOM.settingApiKey.value = "none";
       }
     }
   });

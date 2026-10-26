@@ -172,10 +172,15 @@ def delete_conversation(conv_id: int, user: User = Depends(get_current_user), db
     return {"status": "deleted", "id": conv_id}
 
 async def stream_cloud_chat(messages: list, base_url: str, api_key: str, model: str):
-    """Streams chat completions from standard OpenAI-compatible cloud providers (OpenRouter, DeepSeek, OpenAI, Groq)."""
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    """Streams chat completions from standard OpenAI-compatible cloud providers (NVIDIA NIM, Groq, Gemini, OpenRouter, DeepSeek, Cerebras, Pollinations)."""
+    headers = {"Content-Type": "application/json"}
+    if api_key and api_key.strip() and api_key.strip().lower() not in ("none", "null", "undefined"):
+        headers["Authorization"] = f"Bearer {api_key.strip()}"
+    
     payload = {"model": model, "messages": messages, "stream": True}
     target_url = f"{base_url.rstrip('/')}/chat/completions"
+    inside_cloud_thought = False
+
     try:
         async with httpx.AsyncClient(timeout=90.0) as client:
             async with client.stream("POST", target_url, headers=headers, json=payload) as resp:
@@ -187,14 +192,30 @@ async def stream_cloud_chat(messages: list, base_url: str, api_key: str, model: 
                     if line.startswith("data: "):
                         data_str = line[6:].strip()
                         if data_str == "[DONE]":
+                            if inside_cloud_thought:
+                                yield json.dumps({"token": "</thought>", "done": False})
                             yield json.dumps({"done": True})
                             break
                         try:
                             chunk = json.loads(data_str)
                             delta = chunk.get("choices", [{}])[0].get("delta", {})
+                            
+                            # Support DeepSeek R1 / NVIDIA NIM reasoning_content streaming
+                            reasoning_chunk = delta.get("reasoning_content")
+                            if reasoning_chunk:
+                                if not inside_cloud_thought:
+                                    inside_cloud_thought = True
+                                    yield json.dumps({"token": f"<thought>{reasoning_chunk}", "done": False})
+                                else:
+                                    yield json.dumps({"token": reasoning_chunk, "done": False})
+
                             content = delta.get("content", "")
                             if content:
-                                yield json.dumps({"token": content, "done": False})
+                                if inside_cloud_thought:
+                                    inside_cloud_thought = False
+                                    yield json.dumps({"token": f"</thought>{content}", "done": False})
+                                else:
+                                    yield json.dumps({"token": content, "done": False})
                         except Exception:
                             continue
     except Exception as e:
@@ -328,12 +349,12 @@ async def send_message_stream(
             yield f"data: {json.dumps({'type': 'sources', 'sources': search_sources})}\n\n"
 
         full_assistant_reply = []
-        is_cloud = bool(req.cloud_config and req.cloud_config.get("api_key") and req.cloud_config.get("base_url"))
+        is_cloud = bool(req.cloud_config and req.cloud_config.get("base_url") and req.cloud_config.get("provider") != "local")
         stream_iter = (
             stream_cloud_chat(
                 messages=ollama_messages,
                 base_url=req.cloud_config["base_url"],
-                api_key=req.cloud_config["api_key"],
+                api_key=req.cloud_config.get("api_key") or "",
                 model=req.cloud_config.get("model") or req.cloud_config.get("model_name") or "gpt-4o"
             )
             if is_cloud
