@@ -146,25 +146,25 @@
 
           <!-- Persona Selector Pill -->
           <div class="relative hidden sm:block">
-            <button type="button" id="persona-btn" class="text-xs px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-zinc-300 hover:text-white" style="border-color: var(--border-subtle)">
+            <button type="button" id="persona-btn" class="text-xs px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white" style="border-color: var(--border-subtle)">
               <span id="persona-icon">⚡</span>
               <span id="persona-label">General</span>
               <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
             </button>
-            <div id="persona-dropdown" class="hidden absolute left-0 mt-1.5 w-44 rounded-lg shadow-2xl border p-1 z-50 card-minimal text-xs space-y-0.5 animate-in fade-in zoom-in-95" style="border-color: var(--border-subtle)">
-              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="general" data-icon="⚡">
+            <div id="persona-dropdown" class="hidden absolute left-0 mt-1.5 w-48 rounded-lg shadow-2xl border p-1 z-50 card-minimal text-xs space-y-0.5 animate-in fade-in zoom-in-95 bg-white dark:bg-[#181920]" style="border-color: var(--border-subtle)">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 flex items-center gap-2" data-persona="general" data-icon="⚡">
                 <span>⚡</span><span>General Assistant</span>
               </button>
-              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="coder" data-icon="🛠️">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 flex items-center gap-2" data-persona="coder" data-icon="🛠️">
                 <span>🛠️</span><span>Code Architect</span>
               </button>
-              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="writer" data-icon="✍️">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 flex items-center gap-2" data-persona="writer" data-icon="✍️">
                 <span>✍️</span><span>Creative & Copy</span>
               </button>
-              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="researcher" data-icon="🔬">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 flex items-center gap-2" data-persona="researcher" data-icon="🔬">
                 <span>🔬</span><span>Research & Science</span>
               </button>
-              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2" data-persona="executive" data-icon="💼">
+              <button class="persona-option w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 text-zinc-800 dark:text-zinc-200 flex items-center gap-2" data-persona="executive" data-icon="💼">
                 <span>💼</span><span>Executive Advisor</span>
               </button>
             </div>
@@ -172,8 +172,8 @@
         </div>
 
         <div class="flex items-center gap-1.5 hidden lg:flex">
-          <span id="chat-title" class="text-xs text-zinc-300 font-medium truncate max-w-[180px] cursor-pointer hover:text-white" title="Click to rename">New Chat</span>
-          <button id="rename-chat-btn" class="text-zinc-500 hover:text-zinc-300 p-1 text-[11px] transition-colors" title="Rename conversation">
+          <span id="chat-title" class="text-xs text-zinc-800 dark:text-zinc-300 font-medium truncate max-w-[180px] cursor-pointer hover:text-zinc-950 dark:hover:text-white" title="Click to rename">New Chat</span>
+          <button id="rename-chat-btn" class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 p-1 text-[11px] transition-colors" title="Rename conversation">
             <i class="fa-solid fa-pen text-[10px]"></i>
           </button>
         </div>
@@ -183,24 +183,24 @@
       <!-- Right Action Controls -->
       <div class="flex items-center gap-1.5">
         <!-- Settings Modal Button (Cloud & Hybrid Models) -->
-        <button id="settings-modal-btn" title="Model & Cloud Settings" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-400 hover:text-current transition-colors" style="border-color: var(--border-subtle)">
+        <button id="settings-modal-btn" title="Model & Cloud Settings" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors" style="border-color: var(--border-subtle)">
           <i class="fa-solid fa-sliders text-xs"></i>
         </button>
         <!-- Export Dropdown -->
         <div class="relative">
-          <button id="export-menu-btn" title="Export conversation" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-400 hover:text-current transition-colors" style="border-color: var(--border-subtle)">
+          <button id="export-menu-btn" title="Export conversation" class="w-8 h-8 rounded-md border flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors" style="border-color: var(--border-subtle)">
             <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i>
           </button>
-          <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-2xl border p-1 z-50 card-minimal text-xs space-y-0.5 animate-in fade-in zoom-in-95" style="border-color: var(--border-subtle)">
-            <button id="export-md-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
+          <div id="export-dropdown" class="hidden absolute right-0 mt-2 w-48 rounded-lg shadow-2xl border p-1 z-50 card-minimal text-xs space-y-0.5 animate-in fade-in zoom-in-95 bg-white dark:bg-[#181920]" style="border-color: var(--border-subtle)">
+            <button id="export-md-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors">
               <i class="fa-regular fa-file-lines text-xs text-indigo-400"></i>
               <span>Export as Markdown</span>
             </button>
-            <button id="export-pdf-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
+            <button id="export-pdf-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors">
               <i class="fa-solid fa-print text-xs text-emerald-400"></i>
               <span>Print / Save as PDF</span>
             </button>
-            <button id="copy-chat-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-300 hover:text-white transition-colors">
+            <button id="copy-chat-btn" class="w-full text-left px-2.5 py-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800/60 flex items-center gap-2 text-zinc-700 dark:text-zinc-300 hover:text-zinc-950 dark:hover:text-white transition-colors">
               <i class="fa-regular fa-copy text-xs text-amber-400"></i>
               <span id="copy-chat-label">Copy Entire Chat</span>
             </button>
@@ -283,11 +283,11 @@
         <div class="p-4 border-t shrink-0" style="border-color: var(--border-subtle)">
           <div class="max-w-3xl mx-auto">
             <!-- Attached File Chip Preview -->
-            <div id="attached-file-chip" class="hidden flex items-center gap-2 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-300 w-fit mb-2 animate-in fade-in">
-              <i class="fa-solid fa-file-lines text-xs text-indigo-400"></i>
-              <span id="attached-file-name" class="font-medium max-w-[200px] truncate">file.pdf</span>
-              <span id="attached-file-size" class="text-[10px] text-zinc-400 font-mono">14 KB</span>
-              <button type="button" id="remove-file-btn" class="text-zinc-400 hover:text-rose-400 p-0.5 ml-1 transition-colors" title="Remove attached file">
+            <div id="attached-file-chip" class="hidden flex items-center gap-2 px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-600 dark:text-indigo-300 w-fit mb-2 animate-in fade-in">
+              <i class="fa-solid fa-file-lines text-xs text-indigo-500 dark:text-indigo-400"></i>
+              <span id="attached-file-name" class="font-medium max-w-[200px] truncate text-zinc-800 dark:text-zinc-200">file.pdf</span>
+              <span id="attached-file-size" class="text-[10px] text-zinc-500 dark:text-zinc-400 font-mono">14 KB</span>
+              <button type="button" id="remove-file-btn" class="text-zinc-400 hover:text-rose-500 p-0.5 ml-1 transition-colors" title="Remove attached file">
                 <i class="fa-solid fa-xmark text-[10px]"></i>
               </button>
             </div>
@@ -304,17 +304,17 @@
                 <!-- Controls & Attachment -->
                 <div class="flex items-center gap-1.5">
                   <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.txt,.py,.js,.json,.csv,.md,.html,.sql,.log,.yml,.yaml">
-                  <button type="button" id="attach-file-btn" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)" title="Attach document or code file">
+                  <button type="button" id="attach-file-btn" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)" title="Attach document or code file">
                     <i class="fa-solid fa-paperclip text-[11px]"></i>
                     <span class="text-[11px]">Attach</span>
                   </button>
 
-                  <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                  <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
                     <i class="fa-solid fa-globe text-[11px]"></i>
                     <span id="quick-search-label" class="text-[11px]">Search</span>
                   </button>
                   
-                  <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-400 hover:text-current transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                  <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
                     <i class="fa-solid fa-brain text-[11px]"></i>
                     <span id="quick-reason-label" class="text-[11px]">Reason</span>
                   </button>
@@ -333,7 +333,7 @@
                 </button>
               </div>
             </form>
-            <p class="text-[11px] text-zinc-400 text-center mt-2">
+            <p class="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-2">
               Ari 3B & 1.5B are locally hosted. Verify critical information.
             </p>
           </div>
@@ -345,27 +345,27 @@
         <div class="h-12 border-b flex items-center justify-between px-4 shrink-0" style="border-color: var(--border-subtle)">
           <div class="flex items-center gap-2 min-w-0">
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="canvas-title" class="text-xs font-semibold truncate text-zinc-200">Interactive Preview</span>
+            <span id="canvas-title" class="text-xs font-semibold truncate text-zinc-800 dark:text-zinc-200">Interactive Preview</span>
           </div>
 
           <div class="flex items-center gap-1.5">
-            <div class="flex p-0.5 rounded-lg border text-xs mr-2" style="border-color: var(--border-subtle)">
-              <button id="canvas-tab-preview" class="px-2.5 py-0.5 rounded text-[11px] font-medium bg-zinc-800 text-white">Preview</button>
-              <button id="canvas-tab-code" class="px-2.5 py-0.5 rounded text-[11px] font-medium text-zinc-400 hover:text-white">Code</button>
+            <div class="flex p-0.5 rounded-lg border text-xs mr-2 bg-zinc-100 dark:bg-zinc-800/50" style="border-color: var(--border-subtle)">
+              <button id="canvas-tab-preview" class="canvas-tab px-2.5 py-0.5 rounded text-[11px] font-medium transition-all active">Preview</button>
+              <button id="canvas-tab-code" class="canvas-tab px-2.5 py-0.5 rounded text-[11px] font-medium transition-all">Code</button>
             </div>
-            <button id="canvas-copy-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs" title="Copy code">
+            <button id="canvas-copy-btn" class="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-xs transition-colors" title="Copy code">
               <i class="fa-regular fa-copy"></i>
             </button>
-            <button id="canvas-download-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs" title="Download artifact">
+            <button id="canvas-download-btn" class="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-xs transition-colors" title="Download artifact">
               <i class="fa-solid fa-download"></i>
             </button>
-            <button id="canvas-close-btn" class="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white text-xs ml-1" title="Close canvas">
+            <button id="canvas-close-btn" class="p-1.5 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white text-xs ml-1 transition-colors" title="Close canvas">
               <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
         </div>
 
-        <div class="flex-1 relative overflow-hidden bg-zinc-950 flex flex-col">
+        <div class="flex-1 relative overflow-hidden bg-zinc-100 dark:bg-zinc-950 flex flex-col">
           <iframe id="canvas-iframe" class="w-full h-full border-0 bg-white" sandbox="allow-scripts allow-modals"></iframe>
           <pre id="canvas-code" class="hidden w-full h-full p-4 overflow-auto text-xs font-mono select-text bg-[#0d1117] text-zinc-200"></pre>
         </div>
@@ -601,36 +601,36 @@
       </div>
 
       <div class="space-y-2.5 text-xs">
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Send message</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Send message</span>
           <kbd>Enter</kbd>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">New line in prompt</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">New line in prompt</span>
           <div class="flex items-center gap-1"><kbd>Shift</kbd><span>+</span><kbd>Enter</kbd></div>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Stop generation</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Stop generation</span>
           <kbd>Esc</kbd>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Edit last prompt (in empty input)</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Edit last prompt (in empty input)</span>
           <kbd>↑ Up Arrow</kbd>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Start new chat</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Start new chat</span>
           <div class="flex items-center gap-1"><kbd>Ctrl</kbd><span>+</span><kbd>O</kbd></div>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Show keyboard shortcuts</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Show keyboard shortcuts</span>
           <div class="flex items-center gap-1"><kbd>Ctrl</kbd><span>+</span><kbd>/</kbd></div>
         </div>
-        <div class="flex items-center justify-between py-1 border-b border-zinc-800/50">
-          <span class="text-zinc-300">Toggle Web Search</span>
+        <div class="flex items-center justify-between py-1 border-b border-zinc-200 dark:border-zinc-800/50">
+          <span class="text-zinc-700 dark:text-zinc-300">Toggle Web Search</span>
           <div class="flex items-center gap-1"><kbd>Alt</kbd><span>+</span><kbd>S</kbd></div>
         </div>
         <div class="flex items-center justify-between py-1">
-          <span class="text-zinc-300">Toggle Deep Reasoning</span>
+          <span class="text-zinc-700 dark:text-zinc-300">Toggle Deep Reasoning</span>
           <div class="flex items-center gap-1"><kbd>Alt</kbd><span>+</span><kbd>R</kbd></div>
         </div>
       </div>
@@ -652,8 +652,8 @@
 
       <div class="space-y-4 text-xs">
         <div>
-          <label class="block font-medium text-zinc-300 mb-1">Inference Provider</label>
-          <select id="setting-provider" class="w-full bg-zinc-900 border rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
+          <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Inference Provider</label>
+          <select id="setting-provider" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
             <option value="local">Local Ari Engine (100% Free & Offline)</option>
             <option value="nvidia">NVIDIA NIM (Free 1,000 Credits — Llama 3.3 70B, DeepSeek R1, Nemotron)</option>
             <option value="groq">Groq Cloud (Blazing Fast Free Tier — Llama 3.3 70B, DeepSeek R1 Distill)</option>
@@ -666,40 +666,40 @@
             <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
             <option value="custom">Custom OpenAI-Compatible API</option>
           </select>
-          <div id="provider-hint-box" class="hidden mt-1.5 p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-300 flex items-center justify-between">
+          <div id="provider-hint-box" class="hidden mt-1.5 p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-600 dark:text-indigo-300 flex items-center justify-between">
             <span id="provider-hint-text">Get free credits at build.nvidia.com</span>
-            <a id="provider-hint-link" href="#" target="_blank" class="underline font-semibold ml-2 hover:text-white shrink-0">Get Free Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+            <a id="provider-hint-link" href="#" target="_blank" class="underline font-semibold ml-2 hover:text-indigo-900 dark:hover:text-white shrink-0">Get Free Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
           </div>
         </div>
 
         <div id="cloud-fields" class="space-y-3 hidden">
           <div>
-            <label class="block font-medium text-zinc-300 mb-1">API Base URL</label>
-            <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
+            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Base URL</label>
+            <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
           </div>
 
           <div id="api-key-group">
-            <label class="block font-medium text-zinc-300 mb-1">API Key</label>
-            <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Key</label>
+            <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
             <p id="api-key-subtext" class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
           </div>
 
           <div>
-            <label class="block font-medium text-zinc-300 mb-1">Model Name / Identifier</label>
-            <input id="setting-model-name" type="text" placeholder="deepseek/deepseek-r1" class="w-full bg-zinc-900 border rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model Name / Identifier</label>
+            <input id="setting-model-name" type="text" placeholder="deepseek/deepseek-r1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
           </div>
         </div>
 
-        <div class="p-3 rounded-lg bg-zinc-900/60 border text-[11px] text-zinc-400 space-y-1" style="border-color: var(--border-subtle)">
-          <div class="font-medium text-zinc-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-emerald-400 text-xs"></i>
+        <div class="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-900/60 border text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1" style="border-color: var(--border-subtle)">
+          <div class="font-medium text-zinc-800 dark:text-zinc-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-halved text-emerald-500 dark:text-emerald-400 text-xs"></i>
             <span>Privacy Guarantee</span>
           </div>
           <p>Local Ari 3B runs directly on your machine. When using Cloud APIs, requests stream directly through your custom key.</p>
         </div>
 
         <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
-          <button id="save-settings-btn" class="px-4 py-1.5 rounded-md text-xs font-medium bg-white text-zinc-950 font-semibold hover:bg-zinc-200 transition-colors">
+          <button id="save-settings-btn" class="px-4 py-1.5 rounded-md text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 transition-colors">
             Save Settings
           </button>
         </div>

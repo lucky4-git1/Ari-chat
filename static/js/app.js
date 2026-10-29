@@ -790,15 +790,11 @@ function renderConversationsList(filter = "") {
     const isActive = conv.id === state.currentConvId;
     const isPinned = state.pinnedConvs.includes(conv.id);
     const item = document.createElement("div");
-    item.className = `conv-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${isPinned ? "pinned " : ""}${
-      isActive
-        ? "bg-[#252938] text-white font-medium border border-indigo-500/30"
-        : "text-slate-400 hover:bg-[#20232e] hover:text-slate-200"
-    }`;
+    item.className = `conv-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${isPinned ? "pinned " : ""}${isActive ? "active" : ""}`;
 
     item.innerHTML = `
       <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        <i class="${isPinned ? "fa-solid fa-thumbtack text-amber-400" : "fa-regular fa-message"} text-[11px] ${isActive ? "text-indigo-400" : "text-slate-500"}"></i>
+        <i class="${isPinned ? "fa-solid fa-thumbtack text-amber-400" : "fa-regular fa-message"} text-[11px] ${isActive ? "text-indigo-400" : "opacity-60"}"></i>
         <span class="truncate">${escapeHtml(conv.title)}</span>
       </div>
       <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1527,11 +1523,11 @@ function decorateCodeBlocks(container) {
     header.innerHTML = `
       <span class="font-mono text-[11px] uppercase tracking-wider">${lang}</span>
       <div class="flex items-center gap-2">
-        <button class="preview-canvas-btn text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 transition-all hover:bg-indigo-500/20" title="Open in side-by-side interactive canvas">
+        <button class="preview-canvas-btn" title="Open in side-by-side interactive canvas">
           <i class="fa-solid fa-shapes text-[10px]"></i>
           <span>Canvas</span>
         </button>
-        <button class="copy-code-btn text-xs text-slate-400 hover:text-white flex items-center gap-1">
+        <button class="copy-code-btn text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white flex items-center gap-1 transition-colors">
           <i class="fa-regular fa-copy"></i>
           <span>Copy</span>
         </button>
@@ -1676,10 +1672,10 @@ async function loadMemories() {
             </div>
             <div class="min-w-0">
               <div class="flex items-center gap-2">
-                <span class="font-medium text-zinc-200">${escapeHtml(m.key)}</span>
-                <span class="text-[9px] uppercase tracking-wider text-zinc-500 font-mono px-1.5 py-0.5 rounded bg-zinc-800/50">${escapeHtml(m.category || 'fact')}</span>
+                <span class="font-medium text-zinc-900 dark:text-zinc-100">${escapeHtml(m.key)}</span>
+                <span class="text-[9px] uppercase tracking-wider text-zinc-600 dark:text-zinc-400 font-mono px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/60">${escapeHtml(m.category || 'fact')}</span>
               </div>
-              <p class="text-zinc-400 text-[11px] mt-0.5 leading-relaxed break-words">${escapeHtml(m.value)}</p>
+              <p class="text-zinc-600 dark:text-zinc-400 text-[11px] mt-0.5 leading-relaxed break-words">${escapeHtml(m.value)}</p>
             </div>
           </div>
           <button onclick="handleDeleteMemory(${m.id})" title="Forget this memory" class="text-zinc-500 hover:text-rose-400 p-1.5 rounded-md transition-colors opacity-70 group-hover:opacity-100 shrink-0">
@@ -2075,20 +2071,16 @@ function setupCanvas() {
   DOM.canvasCloseBtn?.addEventListener("click", closeCanvas);
 
   DOM.canvasTabPreview?.addEventListener("click", () => {
-    DOM.canvasTabPreview.classList.add("bg-zinc-800", "text-white");
-    DOM.canvasTabPreview.classList.remove("text-zinc-400");
-    DOM.canvasTabCode.classList.remove("bg-zinc-800", "text-white");
-    DOM.canvasTabCode.classList.add("text-zinc-400");
+    DOM.canvasTabPreview.classList.add("active");
+    DOM.canvasTabCode.classList.remove("active");
 
     DOM.canvasIframe.classList.remove("hidden");
     DOM.canvasCode.classList.add("hidden");
   });
 
   DOM.canvasTabCode?.addEventListener("click", () => {
-    DOM.canvasTabCode.classList.add("bg-zinc-800", "text-white");
-    DOM.canvasTabCode.classList.remove("text-zinc-400");
-    DOM.canvasTabPreview.classList.remove("bg-zinc-800", "text-white");
-    DOM.canvasTabPreview.classList.add("text-zinc-400");
+    DOM.canvasTabCode.classList.add("active");
+    DOM.canvasTabPreview.classList.remove("active");
 
     DOM.canvasCode.classList.remove("hidden");
     DOM.canvasIframe.classList.add("hidden");
@@ -2134,19 +2126,31 @@ function openCanvas(code, lang = "html", title = "Interactive Preview") {
       htmlContent = `<!DOCTYPE html><html><head><meta charset="utf-8"><script src="https://cdn.tailwindcss.com"><\/script></head><body class="p-6 bg-zinc-900 text-zinc-100 font-sans"><div id="app"></div><script>${code}<\/script></body></html>`;
     }
     DOM.canvasIframe.srcdoc = htmlContent;
-    DOM.canvasTabPreview.click();
+    DOM.canvasTabPreview?.click();
   } else {
-    DOM.canvasTabCode.click();
+    DOM.canvasTabCode?.click();
   }
 
   DOM.canvasCode.textContent = code;
   DOM.canvasPanel.classList.remove("hidden");
+
+  // Mobile layout responsiveness: focus on canvas when screen is narrow
+  const chatColumn = document.getElementById("chat-column");
+  if (window.innerWidth < 1024 && chatColumn) {
+    chatColumn.classList.add("hidden");
+  }
 }
 
 function closeCanvas() {
   if (DOM.canvasPanel) {
     DOM.canvasPanel.classList.add("hidden");
     if (DOM.canvasIframe) DOM.canvasIframe.srcdoc = "";
+
+    // Restore chat column on mobile
+    const chatColumn = document.getElementById("chat-column");
+    if (chatColumn) {
+      chatColumn.classList.remove("hidden");
+    }
   }
 }
 
