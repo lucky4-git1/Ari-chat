@@ -31,6 +31,7 @@ const DOM = {
   sidebar: document.getElementById("sidebar"),
   sidebarBackdrop: document.getElementById("sidebar-backdrop"),
   openSidebarBtn: document.getElementById("open-sidebar-btn"),
+  collapseSidebarBtn: document.getElementById("collapse-sidebar-btn"),
   closeSidebarBtn: document.getElementById("close-sidebar-btn"),
   newChatBtn: document.getElementById("new-chat-btn"),
   modelSelect: document.getElementById("model-select"),
@@ -165,7 +166,21 @@ const DOM = {
   apiKeyGroup: document.getElementById("api-key-group"),
   apiKeySubtext: document.getElementById("api-key-subtext"),
   settingModelName: document.getElementById("setting-model-name"),
-  saveSettingsBtn: document.getElementById("save-settings-btn")
+  saveSettingsBtn: document.getElementById("save-settings-btn"),
+
+  // Open WebUI Header Model Picker & Floating Composer
+  modelPickerBtn: document.getElementById("model-picker-btn"),
+  modelPickerDropdown: document.getElementById("model-picker-dropdown"),
+  modelPickerName: document.getElementById("model-picker-name"),
+  modelPickerBadge: document.getElementById("model-picker-badge"),
+  modelPickerDot: document.getElementById("model-picker-dot"),
+  modelPickerSettingsBtn: document.getElementById("model-picker-settings-btn"),
+  voiceDictateBtn: document.getElementById("voice-dictate-btn"),
+  voiceDictateLabel: document.getElementById("voice-dictate-label"),
+  settingVoiceLang: document.getElementById("setting-voice-lang"),
+  settingsOpenMemoryBtn: document.getElementById("settings-open-memory-btn"),
+  generalThemeDark: document.getElementById("general-theme-dark"),
+  generalThemeLight: document.getElementById("general-theme-light")
 };
 
 // Initialize Application
@@ -218,11 +233,18 @@ if (typeof marked !== "undefined") {
  * Event Listeners Setup
  */
 function setupEventListeners() {
-  // Sidebar Mobile Toggle
+  // Sidebar Mobile & Desktop Collapse
   DOM.openSidebarBtn?.addEventListener("click", () => {
-    DOM.sidebar.classList.remove("-translate-x-full");
-    DOM.sidebarBackdrop.classList.remove("hidden");
+    if (window.innerWidth >= 768) {
+      DOM.sidebar?.classList.remove("collapsed");
+      document.body?.classList.remove("sidebar-collapsed");
+      localStorage.setItem("ari_sidebar_collapsed", "false");
+    } else {
+      DOM.sidebar?.classList.remove("-translate-x-full");
+      DOM.sidebarBackdrop?.classList.remove("hidden");
+    }
   });
+  DOM.collapseSidebarBtn?.addEventListener("click", toggleSidebarCollapse);
   DOM.closeSidebarBtn?.addEventListener("click", closeMobileSidebar);
   DOM.sidebarBackdrop?.addEventListener("click", closeMobileSidebar);
 
@@ -268,7 +290,10 @@ function setupEventListeners() {
 
   // Global Keyboard Shortcuts
   window.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "/") {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "s" || e.key === "S")) {
+      e.preventDefault();
+      toggleSidebarCollapse();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === "/") {
       e.preventDefault();
       toggleShortcutsModal();
     } else if (e.altKey && (e.key === "s" || e.key === "S")) {
@@ -280,6 +305,7 @@ function setupEventListeners() {
     } else if (e.key === "Escape") {
       DOM.shortcutsModal?.classList.add("hidden");
       DOM.exportDropdown?.classList.add("hidden");
+      DOM.modelPickerDropdown?.classList.add("hidden");
     }
   });
 
@@ -393,11 +419,28 @@ function setupEventListeners() {
   setupCanvas();
   setupPersonaSelector();
   setupSettingsModal();
+  setupSettingsTabs();
+  setupModelPicker();
+  setupVoiceDictation();
+
+  // Restore sidebar collapsed state on desktop
+  if (localStorage.getItem("ari_sidebar_collapsed") === "true" && window.innerWidth >= 768) {
+    DOM.sidebar?.classList.add("collapsed");
+    document.body?.classList.add("sidebar-collapsed");
+  }
+}
+
+function toggleSidebarCollapse() {
+  if (!DOM.sidebar) return;
+  DOM.sidebar.classList.toggle("collapsed");
+  document.body.classList.toggle("sidebar-collapsed");
+  const isCollapsed = DOM.sidebar.classList.contains("collapsed");
+  localStorage.setItem("ari_sidebar_collapsed", isCollapsed ? "true" : "false");
 }
 
 function closeMobileSidebar() {
-  DOM.sidebar.classList.add("-translate-x-full");
-  DOM.sidebarBackdrop.classList.add("hidden");
+  DOM.sidebar?.classList.add("-translate-x-full");
+  DOM.sidebarBackdrop?.classList.add("hidden");
 }
 
 /**
@@ -569,6 +612,8 @@ function populateModelDropdown(models) {
       DOM.pullModelBtn.classList.add("hidden");
     }
   }
+
+  updateModelPickerDisplay();
 }
 
 async function handleModelSelectChange() {
@@ -581,6 +626,7 @@ async function handleModelSelectChange() {
     openPullModelModal(selectedModelId);
     // Keep dropdown on currently installed model until download completes
     DOM.modelSelect.value = "ari-assistant-1.5b";
+    updateModelPickerDisplay();
     return;
   }
 
@@ -590,6 +636,7 @@ async function handleModelSelectChange() {
   } catch (err) {
     console.error("Failed to switch model:", err);
   }
+  updateModelPickerDisplay();
 }
 
 function openPullModelModal(modelId = "ari-assistant-3b") {
@@ -771,65 +818,111 @@ function renderConversationsList(filter = "") {
 
   if (filtered.length === 0) {
     DOM.conversationsList.innerHTML = `
-      <div class="text-center py-6 text-xs text-slate-500">
+      <div class="text-center py-6 text-xs text-zinc-400">
         <p>${filter ? "No matching chats" : "No conversations yet"}</p>
       </div>`;
     return;
   }
 
-  // Sort pinned conversations to the top
-  filtered.sort((a, b) => {
-    const aPin = state.pinnedConvs.includes(a.id);
-    const bPin = state.pinnedConvs.includes(b.id);
-    if (aPin && !bPin) return -1;
-    if (!aPin && bPin) return 1;
-    return new Date(b.updated_at || 0) - new Date(a.updated_at || 0);
-  });
+  // If user is searching/filtering, show a flat chronological list
+  if (filter) {
+    filtered.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    filtered.forEach(conv => renderConvItem(conv));
+    return;
+  }
+
+  // Open WebUI Time Grouping (Today, Yesterday, 7 Days, 30 Days, Older)
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfYesterday = startOfToday - 24 * 60 * 60 * 1000;
+  const sevenDaysAgo = startOfToday - 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = startOfToday - 30 * 24 * 60 * 60 * 1000;
+
+  const groups = [
+    { title: "Pinned", convs: [] },
+    { title: "Today", convs: [] },
+    { title: "Yesterday", convs: [] },
+    { title: "Previous 7 Days", convs: [] },
+    { title: "Previous 30 Days", convs: [] },
+    { title: "Older", convs: [] }
+  ];
 
   filtered.forEach((conv) => {
-    const isActive = conv.id === state.currentConvId;
-    const isPinned = state.pinnedConvs.includes(conv.id);
-    const item = document.createElement("div");
-    item.className = `conv-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${isPinned ? "pinned " : ""}${isActive ? "active" : ""}`;
-
-    item.innerHTML = `
-      <div class="flex items-center gap-2.5 min-w-0 flex-1">
-        <i class="${isPinned ? "fa-solid fa-thumbtack text-amber-400" : "fa-regular fa-message"} text-[11px] ${isActive ? "text-indigo-400" : "opacity-60"}"></i>
-        <span class="truncate">${escapeHtml(conv.title)}</span>
-      </div>
-      <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button class="pin-conv-btn p-1 ${isPinned ? "text-amber-400" : "hover:text-amber-400"}" title="${isPinned ? "Unpin chat" : "Pin chat"}">
-          <i class="fa-solid fa-thumbtack text-[10px]"></i>
-        </button>
-        <button class="rename-conv-btn p-1 hover:text-indigo-400" title="Rename"><i class="fa-solid fa-pen text-[10px]"></i></button>
-        <button class="delete-conv-btn p-1 hover:text-rose-400" title="Delete"><i class="fa-solid fa-trash text-[10px]"></i></button>
-      </div>
-    `;
-
-    item.addEventListener("click", (e) => {
-      if (!e.target.closest("button")) {
-        selectConversation(conv.id);
-        closeMobileSidebar();
-      }
-    });
-
-    item.querySelector(".pin-conv-btn")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      togglePinConversation(conv.id);
-    });
-
-    item.querySelector(".rename-conv-btn")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      promptRenameConversation(conv.id, conv.title);
-    });
-
-    item.querySelector(".delete-conv-btn")?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      handleDeleteConversation(conv.id);
-    });
-
-    DOM.conversationsList.appendChild(item);
+    if (state.pinnedConvs.includes(conv.id)) {
+      groups[0].convs.push(conv);
+      return;
+    }
+    const t = conv.updated_at ? new Date(conv.updated_at).getTime() : (conv.created_at ? new Date(conv.created_at).getTime() : 0);
+    if (t >= startOfToday) {
+      groups[1].convs.push(conv);
+    } else if (t >= startOfYesterday) {
+      groups[2].convs.push(conv);
+    } else if (t >= sevenDaysAgo) {
+      groups[3].convs.push(conv);
+    } else if (t >= thirtyDaysAgo) {
+      groups[4].convs.push(conv);
+    } else {
+      groups[5].convs.push(conv);
+    }
   });
+
+  // Render each group with Open WebUI header title
+  groups.forEach(group => {
+    group.convs.sort((a, b) => new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0));
+    if (group.convs.length > 0) {
+      const header = document.createElement("div");
+      header.className = "conv-group-title";
+      header.textContent = group.title;
+      DOM.conversationsList.appendChild(header);
+
+      group.convs.forEach(conv => renderConvItem(conv));
+    }
+  });
+}
+
+function renderConvItem(conv) {
+  const isActive = conv.id === state.currentConvId;
+  const isPinned = state.pinnedConvs.includes(conv.id);
+  const item = document.createElement("div");
+  item.className = `conv-item group flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-all ${isPinned ? "pinned " : ""}${isActive ? "active" : ""}`;
+
+  item.innerHTML = `
+    <div class="flex items-center gap-2.5 min-w-0 flex-1">
+      <i class="${isPinned ? "fa-solid fa-thumbtack text-amber-400" : "fa-regular fa-message"} text-[11px] ${isActive ? "text-indigo-400" : "opacity-60"}"></i>
+      <span class="truncate">${escapeHtml(conv.title)}</span>
+    </div>
+    <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button class="pin-conv-btn p-1 ${isPinned ? "text-amber-400" : "hover:text-amber-400"}" title="${isPinned ? "Unpin chat" : "Pin chat"}">
+        <i class="fa-solid fa-thumbtack text-[10px]"></i>
+      </button>
+      <button class="rename-conv-btn p-1 hover:text-indigo-400" title="Rename"><i class="fa-solid fa-pen text-[10px]"></i></button>
+      <button class="delete-conv-btn p-1 hover:text-rose-400" title="Delete"><i class="fa-solid fa-trash text-[10px]"></i></button>
+    </div>
+  `;
+
+  item.addEventListener("click", (e) => {
+    if (!e.target.closest("button")) {
+      selectConversation(conv.id);
+      closeMobileSidebar();
+    }
+  });
+
+  item.querySelector(".pin-conv-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    togglePinConversation(conv.id);
+  });
+
+  item.querySelector(".rename-conv-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    promptRenameConversation(conv.id, conv.title);
+  });
+
+  item.querySelector(".delete-conv-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handleDeleteConversation(conv.id);
+  });
+
+  DOM.conversationsList.appendChild(item);
 }
 
 function filterConversations(e) {
@@ -2376,7 +2469,229 @@ function setupSettingsModal() {
       };
       localStorage.setItem("ari_cloud_config", JSON.stringify(state.cloudConfig));
     }
+    updateModelPickerDisplay();
     DOM.settingsModal.classList.add("hidden");
   });
+}
+
+/**
+ * Open WebUI Multi-Tab Settings Controller
+ */
+function setupSettingsTabs() {
+  const tabButtons = document.querySelectorAll(".settings-tab-btn");
+  const tabPanes = document.querySelectorAll(".settings-pane");
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.getAttribute("data-tab");
+      switchSettingsTab(targetTab);
+    });
+  });
+
+  // General tab: theme buttons
+  DOM.generalThemeDark?.addEventListener("click", () => {
+    setTheme(true);
+  });
+
+  DOM.generalThemeLight?.addEventListener("click", () => {
+    setTheme(false);
+  });
+
+  // Memory tab button to jump to memory manager
+  DOM.settingsOpenMemoryBtn?.addEventListener("click", () => {
+    DOM.settingsModal?.classList.add("hidden");
+    openMemoryModal();
+  });
+}
+
+function switchSettingsTab(tabName) {
+  const tabButtons = document.querySelectorAll(".settings-tab-btn");
+  const tabPanes = document.querySelectorAll(".settings-pane");
+
+  tabButtons.forEach(btn => {
+    if (btn.getAttribute("data-tab") === tabName) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  tabPanes.forEach(pane => {
+    if (pane.id === `settings-pane-${tabName}`) {
+      pane.classList.remove("hidden");
+    } else {
+      pane.classList.add("hidden");
+    }
+  });
+}
+
+function openSettingsModalWithProvider(providerKey) {
+  if (DOM.settingsModal) {
+    DOM.settingsModal.classList.remove("hidden");
+    switchSettingsTab("models");
+    if (DOM.settingProvider) {
+      DOM.settingProvider.value = providerKey;
+      DOM.settingProvider.dispatchEvent(new Event("change"));
+    }
+  }
+}
+
+/**
+ * Open WebUI Model Selector Controller
+ */
+function setupModelPicker() {
+  if (!DOM.modelPickerBtn || !DOM.modelPickerDropdown) return;
+
+  DOM.modelPickerBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    DOM.modelPickerDropdown.classList.toggle("hidden");
+  });
+
+  document.addEventListener("click", () => {
+    DOM.modelPickerDropdown?.classList.add("hidden");
+  });
+
+  DOM.modelPickerDropdown.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  document.querySelectorAll(".model-picker-item").forEach((item) => {
+    item.addEventListener("click", async () => {
+      DOM.modelPickerDropdown.classList.add("hidden");
+      const provider = item.getAttribute("data-provider");
+      const val = item.getAttribute("data-value");
+
+      if (provider === "local") {
+        state.cloudConfig = null;
+        localStorage.removeItem("ari_cloud_config");
+        if (DOM.modelSelect) {
+          DOM.modelSelect.value = val;
+          await handleModelSelectChange();
+        }
+        updateModelPickerDisplay();
+      } else {
+        openSettingsModalWithProvider(val);
+      }
+    });
+  });
+
+  DOM.modelPickerSettingsBtn?.addEventListener("click", () => {
+    DOM.modelPickerDropdown.classList.add("hidden");
+    DOM.settingsModal?.classList.remove("hidden");
+    switchSettingsTab("models");
+  });
+
+  updateModelPickerDisplay();
+}
+
+function updateModelPickerDisplay() {
+  if (!DOM.modelPickerName || !DOM.modelPickerBadge) return;
+
+  if (state.cloudConfig && state.cloudConfig.provider !== "local") {
+    const prov = state.cloudConfig.provider;
+    const preset = PROVIDER_PRESETS[prov] || PROVIDER_PRESETS.custom;
+    DOM.modelPickerName.textContent = state.cloudConfig.model_name || preset.name;
+    DOM.modelPickerBadge.textContent = preset.name.split(" ")[0];
+    if (DOM.modelPickerDot) {
+      DOM.modelPickerDot.className = "w-2 h-2 rounded-full bg-blue-500 animate-pulse";
+    }
+  } else {
+    const selected = DOM.modelSelect?.value || "ari-assistant-1.5b";
+    if (selected === "ari-assistant-3b") {
+      DOM.modelPickerName.textContent = "Ari 3B Assistant";
+      DOM.modelPickerBadge.textContent = "Local 3B";
+    } else {
+      DOM.modelPickerName.textContent = "Ari 1.5B Assistant";
+      DOM.modelPickerBadge.textContent = "Local 1.5B";
+    }
+    if (DOM.modelPickerDot) {
+      DOM.modelPickerDot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+    }
+  }
+}
+
+/**
+ * Open WebUI Voice Dictation (Speech-to-Text)
+ */
+let recognition = null;
+let isDictating = false;
+
+function setupVoiceDictation() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    if (DOM.voiceDictateBtn) {
+      DOM.voiceDictateBtn.title = "Voice dictation not supported in this browser (Chrome / Edge recommended)";
+      DOM.voiceDictateBtn.classList.add("opacity-40");
+    }
+    return;
+  }
+
+  try {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = DOM.settingVoiceLang ? DOM.settingVoiceLang.value : "en-US";
+
+    recognition.onstart = () => {
+      isDictating = true;
+      DOM.voiceDictateBtn?.classList.add("listening");
+      if (DOM.voiceDictateLabel) DOM.voiceDictateLabel.textContent = "Listening...";
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        }
+      }
+      if (finalTranscript) {
+        const current = DOM.messageInput.value;
+        DOM.messageInput.value = (current ? current + " " : "") + finalTranscript.trim();
+        handleInputChange();
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.warn("Speech recognition error:", event.error);
+      stopDictation();
+    };
+
+    recognition.onend = () => {
+      stopDictation();
+    };
+
+    DOM.voiceDictateBtn?.addEventListener("click", () => {
+      if (isDictating) {
+        recognition.stop();
+        stopDictation();
+      } else {
+        try {
+          if (DOM.settingVoiceLang) {
+            recognition.lang = DOM.settingVoiceLang.value;
+          }
+          recognition.start();
+        } catch (err) {
+          console.warn("Recognition start err:", err);
+          stopDictation();
+        }
+      }
+    });
+
+    DOM.settingVoiceLang?.addEventListener("change", () => {
+      if (recognition && DOM.settingVoiceLang) {
+        recognition.lang = DOM.settingVoiceLang.value;
+      }
+    });
+  } catch (err) {
+    console.warn("Speech recognition init error:", err);
+  }
+}
+
+function stopDictation() {
+  isDictating = false;
+  DOM.voiceDictateBtn?.classList.remove("listening");
+  if (DOM.voiceDictateLabel) DOM.voiceDictateLabel.textContent = "Dictate";
 }
 

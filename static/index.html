@@ -54,7 +54,7 @@
   <!-- Left Sidebar -->
   <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 border-r flex flex-col transition-transform duration-200 transform -translate-x-full md:relative md:translate-x-0">
     <!-- Sidebar Header with Bespoke Ari Monogram -->
-    <div class="h-14 px-4 border-b flex items-center justify-between" style="border-color: var(--border-subtle)">
+    <div class="h-14 px-3.5 border-b flex items-center justify-between" style="border-color: var(--border-subtle)">
       <div class="flex items-center gap-2.5">
         <div class="w-7 h-7 flex items-center justify-center text-current">
           <svg viewBox="0 0 64 64" fill="none" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
@@ -64,9 +64,14 @@
         </div>
         <span class="font-semibold text-sm tracking-tight">Ari</span>
       </div>
-      <button id="close-sidebar-btn" class="md:hidden text-zinc-400 hover:text-current p-1">
-        <i class="fa-solid fa-xmark text-sm"></i>
-      </button>
+      <div class="flex items-center gap-1">
+        <button id="collapse-sidebar-btn" title="Close sidebar (Ctrl+Shift+S)" class="hidden md:flex text-zinc-400 hover:text-current p-1.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+          <i class="fa-solid fa-bars-staggered text-xs"></i>
+        </button>
+        <button id="close-sidebar-btn" class="md:hidden text-zinc-400 hover:text-current p-1">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
     </div>
 
     <!-- New Chat & Search -->
@@ -127,16 +132,91 @@
           <i class="fa-solid fa-bars text-sm"></i>
         </button>
         
-        <!-- Clean Model Selector & Pull Button -->
+        <!-- Open WebUI Model Selector & Pull Button -->
         <div class="flex items-center gap-2">
+          <!-- Open WebUI Pill Model Picker -->
           <div class="relative">
-            <select id="model-select" class="text-xs font-medium border rounded-md pl-2.5 pr-7 py-1.5 outline-none cursor-pointer appearance-none">
+            <button type="button" id="model-picker-btn" class="model-pill" title="Select active model or configure cloud inference">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" id="model-picker-dot"></span>
+              <span id="model-picker-name" class="font-medium">Ari 1.5B Assistant</span>
+              <span id="model-picker-badge" class="openwebui-badge">Local</span>
+              <i class="fa-solid fa-chevron-down text-[10px] text-zinc-400 ml-0.5"></i>
+            </button>
+            
+            <!-- Model Dropdown Menu -->
+            <div id="model-picker-dropdown" class="hidden absolute left-0 mt-2 w-72 rounded-xl shadow-2xl border p-2 z-50 card-minimal text-xs space-y-1 animate-in fade-in zoom-in-95 bg-white dark:bg-[#181920]" style="border-color: var(--border-subtle)">
+              <div class="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Local Offline Models</div>
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="ari-assistant-1.5b" data-provider="local" data-name="Ari 1.5B Assistant" data-badge="Local 1.5B">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-bolt text-amber-400 text-xs"></i>
+                  <div>
+                    <div class="font-medium text-xs">Ari 1.5B Assistant</div>
+                    <div class="text-[10px] text-zinc-400">Built-in local engine • Ready</div>
+                  </div>
+                </div>
+                <span class="openwebui-badge">Active</span>
+              </button>
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="ari-assistant-3b" data-provider="local" data-name="Ari 3B Assistant" data-badge="Local 3B">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-microchip text-indigo-400 text-xs"></i>
+                  <div>
+                    <div class="font-medium text-xs">Ari 3B Assistant</div>
+                    <div class="text-[10px] text-zinc-400">1.9 GB • Local Q4_K_M</div>
+                  </div>
+                </div>
+                <span class="text-[10px] text-zinc-400 font-mono">Offline</span>
+              </button>
+
+              <div class="border-t my-1.5" style="border-color: var(--border-subtle)"></div>
+              <div class="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                <span>Cloud & Frontier Providers</span>
+                <span class="text-[9px] text-indigo-400 font-medium">Free Tiers</span>
+              </div>
+              
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="nvidia" data-provider="nvidia" data-name="NVIDIA NIM (Free 1K)" data-badge="NVIDIA">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-server text-emerald-400 text-xs"></i>
+                  <div class="font-medium text-xs">NVIDIA NIM (Free 1K)</div>
+                </div>
+                <span class="text-[10px] text-emerald-400">Llama 3.3 / R1</span>
+              </button>
+
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="groq" data-provider="groq" data-name="Groq Cloud" data-badge="Groq">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-bolt-lightning text-orange-400 text-xs"></i>
+                  <div class="font-medium text-xs">Groq Cloud (Fast)</div>
+                </div>
+                <span class="text-[10px] text-orange-400">Free Tier</span>
+              </button>
+
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="gemini" data-provider="gemini" data-name="Google Gemini AI" data-badge="Gemini">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-wand-magic-sparkles text-blue-400 text-xs"></i>
+                  <div class="font-medium text-xs">Google Gemini AI</div>
+                </div>
+                <span class="text-[10px] text-blue-400">Flash 2.0</span>
+              </button>
+
+              <button type="button" class="model-picker-item w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center justify-between text-zinc-800 dark:text-zinc-200 transition-colors" data-value="pollinations" data-provider="pollinations" data-name="Pollinations AI" data-badge="Pollinations">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-seedling text-teal-400 text-xs"></i>
+                  <div class="font-medium text-xs">Pollinations (100% Free)</div>
+                </div>
+                <span class="text-[10px] text-teal-400">No Key Needed</span>
+              </button>
+
+              <div class="border-t my-1.5" style="border-color: var(--border-subtle)"></div>
+              <button type="button" id="model-picker-settings-btn" class="w-full text-left px-2.5 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/70 flex items-center gap-2 text-indigo-500 dark:text-indigo-400 font-medium text-xs transition-colors">
+                <i class="fa-solid fa-gear text-xs"></i>
+                <span>Manage Models & Cloud Keys...</span>
+              </button>
+            </div>
+
+            <!-- Hidden native select maintaining 100% backward compatibility with all JS hooks -->
+            <select id="model-select" class="hidden">
               <option value="ari-assistant-1.5b" selected>Ari 1.5B Assistant (Ready • Fast)</option>
               <option value="ari-assistant-3b">Ari 3B Assistant (1.9 GB • Download)</option>
             </select>
-            <div class="absolute right-2 top-2 pointer-events-none text-zinc-400 text-[10px]">
-              <i class="fa-solid fa-chevron-down"></i>
-            </div>
           </div>
 
           <button id="pull-model-btn" class="text-xs font-medium px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 transition-colors card-minimal text-indigo-400 hover:text-indigo-300 border-indigo-500/30 bg-indigo-500/10" title="Pull Ari 3B Model (1.9 GB)">
@@ -292,7 +372,7 @@
               </button>
             </div>
 
-            <form id="chat-form" class="rounded-xl p-3 border shadow-sm transition-all" style="border-color: var(--border-subtle)">
+            <form id="chat-form" class="rounded-2xl p-3 border shadow-sm transition-all bg-white dark:bg-[#181920]" style="border-color: var(--border-subtle)">
               <textarea
                 id="message-input"
                 rows="1"
@@ -302,35 +382,43 @@
 
               <div class="flex items-center justify-between pt-2.5 px-0.5 border-t mt-1" style="border-color: var(--border-subtle)">
                 <!-- Controls & Attachment -->
-                <div class="flex items-center gap-1.5">
+                <div class="flex items-center gap-1.5 flex-wrap">
                   <input type="file" id="file-upload-input" class="hidden" accept=".pdf,.txt,.py,.js,.json,.csv,.md,.html,.sql,.log,.yml,.yaml">
-                  <button type="button" id="attach-file-btn" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)" title="Attach document or code file">
+                  <button type="button" id="attach-file-btn" class="composer-pill-btn" title="Attach document or code file">
                     <i class="fa-solid fa-paperclip text-[11px]"></i>
                     <span class="text-[11px]">Attach</span>
                   </button>
 
-                  <button type="button" id="btn-quick-search" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                  <button type="button" id="btn-quick-search" class="composer-pill-btn" title="Toggle web search retrieval">
                     <i class="fa-solid fa-globe text-[11px]"></i>
                     <span id="quick-search-label" class="text-[11px]">Search</span>
                   </button>
                   
-                  <button type="button" id="btn-quick-reason" class="text-xs px-2.5 py-1 rounded-md border text-zinc-600 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white transition-colors flex items-center gap-1.5" style="border-color: var(--border-subtle)">
+                  <button type="button" id="btn-quick-reason" class="composer-pill-btn" title="Toggle deep reasoning mode">
                     <i class="fa-solid fa-brain text-[11px]"></i>
                     <span id="quick-reason-label" class="text-[11px]">Reason</span>
                   </button>
+
+                  <!-- Open WebUI Live Voice Dictation Button -->
+                  <button type="button" id="voice-dictate-btn" class="composer-pill-btn mic-btn" title="Voice Dictation (Speech-to-Text)">
+                    <i class="fa-solid fa-microphone text-[11px]"></i>
+                    <span id="voice-dictate-label" class="text-[11px]">Dictate</span>
+                  </button>
                 </div>
 
-                <button
-                  type="submit"
-                  id="send-btn"
-                  disabled
-                  title="Send message"
-                  aria-label="Send message"
-                  class="w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30"
-                  style="border-color: var(--border-subtle)"
-                >
-                  <i class="fa-solid fa-arrow-up text-xs"></i>
-                </button>
+                <div class="flex items-center gap-1.5">
+                  <button
+                    type="submit"
+                    id="send-btn"
+                    disabled
+                    title="Send message"
+                    aria-label="Send message"
+                    class="w-8 h-8 rounded-full border flex items-center justify-center transition-all cursor-pointer disabled:opacity-30 bg-zinc-900 text-white dark:bg-white dark:text-zinc-950"
+                    style="border-color: var(--border-subtle)"
+                  >
+                    <i class="fa-solid fa-arrow-up text-xs"></i>
+                  </button>
+                </div>
               </div>
             </form>
             <p class="text-[11px] text-zinc-500 dark:text-zinc-400 text-center mt-2">
@@ -637,71 +725,250 @@
     </div>
   </div>
 
-  <!-- Settings / Hybrid Model Modal -->
+  <!-- Settings / Hybrid Model Modal (Open WebUI Multi-Tab) -->
   <div id="settings-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="card-minimal rounded-xl w-full max-w-md p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
-      <div class="flex items-center justify-between border-b pb-3" style="border-color: var(--border-subtle)">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-sm text-indigo-400"></i>
-          <h3 class="text-sm font-semibold tracking-tight">Model & Hybrid Cloud Settings</h3>
+    <div class="card-minimal rounded-2xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 bg-white dark:bg-[#17171a] border border-zinc-200 dark:border-zinc-800">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between px-5 py-3.5 border-b" style="border-color: var(--border-subtle)">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-sliders text-sm text-indigo-500"></i>
+          <h3 class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Settings</h3>
         </div>
-        <button id="close-settings-modal-btn" class="text-zinc-400 hover:text-current p-1">
+        <button id="close-settings-modal-btn" class="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-md transition-colors">
           <i class="fa-solid fa-xmark text-sm"></i>
         </button>
       </div>
 
-      <div class="space-y-4 text-xs">
-        <div>
-          <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Inference Provider</label>
-          <select id="setting-provider" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
-            <option value="local">Local Ari Engine (100% Free & Offline)</option>
-            <option value="nvidia">NVIDIA NIM (Free 1,000 Credits — Llama 3.3 70B, DeepSeek R1, Nemotron)</option>
-            <option value="groq">Groq Cloud (Blazing Fast Free Tier — Llama 3.3 70B, DeepSeek R1 Distill)</option>
-            <option value="gemini">Google Gemini AI Studio (Free Tier — Gemini 2.0 Flash / 1.5 Pro)</option>
-            <option value="cerebras">Cerebras Inference (Ultra Fast Free Tier — Llama 3.3 70B)</option>
-            <option value="pollinations">Pollinations AI (100% Free — No API Key Needed!)</option>
-            <option value="openrouter_free">OpenRouter Free Models (Llama 3.3 :free, DeepSeek R1 :free)</option>
-            <option value="openrouter">OpenRouter Standard (Claude 3.5 Sonnet, GPT-4o, DeepSeek R1)</option>
-            <option value="deepseek">DeepSeek Official (DeepSeek-V3 / R1)</option>
-            <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
-            <option value="custom">Custom OpenAI-Compatible API</option>
-          </select>
-          <div id="provider-hint-box" class="hidden mt-1.5 p-2 rounded bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-600 dark:text-indigo-300 flex items-center justify-between">
-            <span id="provider-hint-text">Get free credits at build.nvidia.com</span>
-            <a id="provider-hint-link" href="#" target="_blank" class="underline font-semibold ml-2 hover:text-indigo-900 dark:hover:text-white shrink-0">Get Free Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
-          </div>
-        </div>
-
-        <div id="cloud-fields" class="space-y-3 hidden">
-          <div>
-            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Base URL</label>
-            <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
-          </div>
-
-          <div id="api-key-group">
-            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Key</label>
-            <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
-            <p id="api-key-subtext" class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
-          </div>
-
-          <div>
-            <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model Name / Identifier</label>
-            <input id="setting-model-name" type="text" placeholder="deepseek/deepseek-r1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
-          </div>
-        </div>
-
-        <div class="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-900/60 border text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1" style="border-color: var(--border-subtle)">
-          <div class="font-medium text-zinc-800 dark:text-zinc-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-emerald-500 dark:text-emerald-400 text-xs"></i>
-            <span>Privacy Guarantee</span>
-          </div>
-          <p>Local Ari 3B runs directly on your machine. When using Cloud APIs, requests stream directly through your custom key.</p>
-        </div>
-
-        <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
-          <button id="save-settings-btn" class="px-4 py-1.5 rounded-md text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 transition-colors">
-            Save Settings
+      <!-- Modal Body (Split Layout) -->
+      <div class="flex flex-1 min-h-[380px] overflow-hidden">
+        <!-- Left Sidebar Tabs -->
+        <div class="w-48 border-r p-2 space-y-1 shrink-0 bg-zinc-50/50 dark:bg-[#141416]" style="border-color: var(--border-subtle)">
+          <button type="button" class="settings-tab-btn active" data-tab="models">
+            <i class="fa-solid fa-microchip w-4 text-center"></i>
+            <span>Models & Cloud</span>
           </button>
+          <button type="button" class="settings-tab-btn" data-tab="general">
+            <i class="fa-solid fa-gear w-4 text-center"></i>
+            <span>General</span>
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="personas">
+            <i class="fa-solid fa-user-astronaut w-4 text-center"></i>
+            <span>Personas</span>
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="memory">
+            <i class="fa-solid fa-fingerprint w-4 text-center"></i>
+            <span>Memory</span>
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="audio">
+            <i class="fa-solid fa-microphone w-4 text-center"></i>
+            <span>Voice & Audio</span>
+          </button>
+          <button type="button" class="settings-tab-btn" data-tab="about">
+            <i class="fa-solid fa-circle-info w-4 text-center"></i>
+            <span>About</span>
+          </button>
+        </div>
+
+        <!-- Right Content Panes -->
+        <div class="flex-1 p-5 overflow-y-auto">
+          <!-- Models & Cloud Pane (Default) -->
+          <div id="settings-pane-models" class="settings-pane space-y-4 text-xs">
+            <div>
+              <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Inference Provider</label>
+              <select id="setting-provider" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
+                <option value="local">Local Ari Engine (100% Free & Offline)</option>
+                <option value="nvidia">NVIDIA NIM (Free 1,000 Credits — Llama 3.3 70B, DeepSeek R1, Nemotron)</option>
+                <option value="groq">Groq Cloud (Blazing Fast Free Tier — Llama 3.3 70B, DeepSeek R1 Distill)</option>
+                <option value="gemini">Google Gemini AI Studio (Free Tier — Gemini 2.0 Flash / 1.5 Pro)</option>
+                <option value="cerebras">Cerebras Inference (Ultra Fast Free Tier — Llama 3.3 70B)</option>
+                <option value="pollinations">Pollinations AI (100% Free — No API Key Needed!)</option>
+                <option value="openrouter_free">OpenRouter Free Models (Llama 3.3 :free, DeepSeek R1 :free)</option>
+                <option value="openrouter">OpenRouter Standard (Claude 3.5 Sonnet, GPT-4o, DeepSeek R1)</option>
+                <option value="deepseek">DeepSeek Official (DeepSeek-V3 / R1)</option>
+                <option value="openai">OpenAI (GPT-4o, o1, o3-mini)</option>
+                <option value="custom">Custom OpenAI-Compatible API</option>
+              </select>
+              <div id="provider-hint-box" class="hidden mt-1.5 p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[11px] text-indigo-600 dark:text-indigo-300 flex items-center justify-between">
+                <span id="provider-hint-text">Get free credits at build.nvidia.com</span>
+                <a id="provider-hint-link" href="#" target="_blank" class="underline font-semibold ml-2 hover:text-indigo-900 dark:hover:text-white shrink-0">Get Free Key <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+              </div>
+            </div>
+
+            <div id="cloud-fields" class="space-y-3 hidden">
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Base URL</label>
+                <input id="setting-base-url" type="text" placeholder="https://openrouter.ai/api/v1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none" style="border-color: var(--border-subtle)">
+              </div>
+
+              <div id="api-key-group">
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">API Key</label>
+                <input id="setting-api-key" type="password" placeholder="sk-..." class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+                <p id="api-key-subtext" class="text-[10px] text-zinc-500 mt-1">Stored securely in your local browser storage only.</p>
+              </div>
+
+              <div>
+                <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Model Name / Identifier</label>
+                <input id="setting-model-name" type="text" placeholder="deepseek/deepseek-r1" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-1.5 text-xs outline-none font-mono" style="border-color: var(--border-subtle)">
+              </div>
+            </div>
+
+            <div class="p-3 rounded-lg bg-zinc-100 dark:bg-zinc-900/60 border text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1" style="border-color: var(--border-subtle)">
+              <div class="font-medium text-zinc-800 dark:text-zinc-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-500 dark:text-emerald-400 text-xs"></i>
+                <span>Privacy & Offline Guarantee</span>
+              </div>
+              <p>Local Ari 3B & 1.5B run 100% offline on your device. Cloud APIs connect directly via client keys with no intermediary telemetry.</p>
+            </div>
+
+            <div class="pt-2 flex items-center justify-end gap-2 border-t" style="border-color: var(--border-subtle)">
+              <button id="save-settings-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 transition-colors">
+                Save Model Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- General Pane -->
+          <div id="settings-pane-general" class="settings-pane hidden space-y-4 text-xs">
+            <div>
+              <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Appearance & Theme</h4>
+              <p class="text-zinc-500 dark:text-zinc-400 mb-3 text-[11px]">Customize Ari's visual interface mode.</p>
+              <div class="flex items-center gap-3">
+                <button type="button" id="general-theme-dark" class="px-3 py-1.5 rounded-lg border text-xs font-medium bg-zinc-900 text-white dark:border-zinc-700">Dark (Open WebUI)</button>
+                <button type="button" id="general-theme-light" class="px-3 py-1.5 rounded-lg border text-xs font-medium bg-zinc-100 text-zinc-800 border-zinc-300">Light Clean</button>
+              </div>
+            </div>
+
+            <div class="border-t pt-3" style="border-color: var(--border-subtle)">
+              <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Keyboard Shortcuts</h4>
+              <p class="text-zinc-500 dark:text-zinc-400 mb-2 text-[11px]">Quick hotkeys for fast workflow.</p>
+              <div class="grid grid-cols-2 gap-2 text-[11px]">
+                <div class="flex items-center justify-between p-2 rounded border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <span>New Chat</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px]">Ctrl+O</kbd>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <span>Toggle Sidebar</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px]">Ctrl+Shift+S</kbd>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <span>Search Toggle</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px]">Alt+S</kbd>
+                </div>
+                <div class="flex items-center justify-between p-2 rounded border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <span>Reasoning Mode</span>
+                  <kbd class="px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-[10px]">Alt+R</kbd>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Personas Pane -->
+          <div id="settings-pane-personas" class="settings-pane hidden space-y-4 text-xs">
+            <div>
+              <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Active Persona & Directives</h4>
+              <p class="text-zinc-500 dark:text-zinc-400 mb-3 text-[11px]">Select which persona personality Ari adopts across sessions.</p>
+              <div class="space-y-2">
+                <div class="p-2.5 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40 flex items-center justify-between" style="border-color: var(--border-subtle)">
+                  <div>
+                    <div class="font-medium text-zinc-800 dark:text-zinc-200">⚡ General Assistant</div>
+                    <div class="text-[10px] text-zinc-400">Balanced, articulate, concise answers</div>
+                  </div>
+                  <span class="openwebui-badge">Default</span>
+                </div>
+                <div class="p-2.5 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40 flex items-center justify-between" style="border-color: var(--border-subtle)">
+                  <div>
+                    <div class="font-medium text-zinc-800 dark:text-zinc-200">🛠️ Code Architect</div>
+                    <div class="text-[10px] text-zinc-400">Strict idiomatic code, complexity analysis, test coverage</div>
+                  </div>
+                  <span class="text-[10px] text-zinc-400">Available</span>
+                </div>
+                <div class="p-2.5 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40 flex items-center justify-between" style="border-color: var(--border-subtle)">
+                  <div>
+                    <div class="font-medium text-zinc-800 dark:text-zinc-200">🔬 Research & Science</div>
+                    <div class="text-[10px] text-zinc-400">Formal citations, methodology breakdown, empirical rigor</div>
+                  </div>
+                  <span class="text-[10px] text-zinc-400">Available</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Memory Pane -->
+          <div id="settings-pane-memory" class="settings-pane hidden space-y-4 text-xs">
+            <div>
+              <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Persistent Vector Memory</h4>
+              <p class="text-zinc-500 dark:text-zinc-400 mb-3 text-[11px]">Ari remembers facts, project details, and user preferences across all conversations.</p>
+              <div class="p-3 rounded-lg border bg-indigo-500/10 border-indigo-500/20 text-indigo-700 dark:text-indigo-300 space-y-2">
+                <div class="flex items-center gap-2 font-medium">
+                  <i class="fa-solid fa-fingerprint"></i>
+                  <span>Zero-Cloud Local Memory</span>
+                </div>
+                <p class="text-[11px] leading-relaxed">
+                  Memories are stored in your local SQLite database and retrieved via cosine similarity ranking. You can view, search, or purge stored memories anytime.
+                </p>
+                <button type="button" id="settings-open-memory-btn" class="mt-1 px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition-colors">
+                  Open Memory Manager
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Audio & Voice Pane -->
+          <div id="settings-pane-audio" class="settings-pane hidden space-y-4 text-xs">
+            <div>
+              <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 mb-1">Voice Dictation (Speech-to-Text)</h4>
+              <p class="text-zinc-500 dark:text-zinc-400 mb-3 text-[11px]">Configure real-time voice speech recognition for the chat composer.</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block font-medium text-zinc-700 dark:text-zinc-300 mb-1">Dictation Language</label>
+                  <select id="setting-voice-lang" class="w-full bg-zinc-50 dark:bg-zinc-900 border text-zinc-900 dark:text-zinc-100 rounded-lg px-3 py-2 text-xs outline-none" style="border-color: var(--border-subtle)">
+                    <option value="en-US" selected>English (United States)</option>
+                    <option value="en-GB">English (United Kingdom)</option>
+                    <option value="es-ES">Spanish (Spain)</option>
+                    <option value="fr-FR">French (France)</option>
+                    <option value="de-DE">German (Germany)</option>
+                    <option value="zh-CN">Chinese (Mandarin)</option>
+                    <option value="ja-JP">Japanese</option>
+                  </select>
+                </div>
+                <div class="p-3 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40 text-[11px] text-zinc-500 dark:text-zinc-400" style="border-color: var(--border-subtle)">
+                  <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                  Uses browser-native Web Speech API. Microphone permissions are required when clicking Dictate in the composer.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- About Pane -->
+          <div id="settings-pane-about" class="settings-pane hidden space-y-4 text-xs">
+            <div class="space-y-2">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-500">
+                  <svg viewBox="0 0 64 64" fill="none" class="w-6 h-6" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M32 8L10 52H22L32 32L42 52H54L32 8Z" fill="currentColor"/>
+                    <circle cx="32" cy="41" r="4.5" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="font-semibold text-zinc-900 dark:text-zinc-100 text-sm">Ari Chat Studio</h4>
+                  <p class="text-zinc-400 text-[11px]">Open WebUI Architecture • v2.5 Frontier</p>
+                </div>
+              </div>
+              <p class="text-zinc-500 dark:text-zinc-400 text-[11px] leading-relaxed pt-2">
+                An ultra-responsive, privacy-preserving LLM interface designed for seamless offline local inference (Ari 3B / 1.5B) and instant hybrid switching to cloud intelligence providers.
+              </p>
+              <div class="grid grid-cols-2 gap-2 pt-2 text-[11px]">
+                <div class="p-2.5 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <div class="text-zinc-400 text-[10px]">LOCAL ENGINE</div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">llama.cpp 4-bit AVX2</div>
+                </div>
+                <div class="p-2.5 rounded-lg border bg-zinc-50 dark:bg-zinc-900/40" style="border-color: var(--border-subtle)">
+                  <div class="text-zinc-400 text-[10px]">BACKEND</div>
+                  <div class="font-semibold text-zinc-800 dark:text-zinc-200 mt-0.5">FastAPI Async SSE</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

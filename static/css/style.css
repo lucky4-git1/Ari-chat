@@ -27,26 +27,26 @@
 }
 
 html.dark, :root.dark {
-  --bg-canvas: #0d0e12;
-  --bg-sidebar: #131419;
-  --bg-surface: #181920;
-  --bg-surface-hover: #21222b;
-  --bg-bubble-user: #1f2029;
-  --bg-bubble-bot: #131419;
-  --border-subtle: #232530;
-  --border-medium: #303342;
-  --text-primary: #f0f0f4;
-  --text-secondary: #9da0b3;
-  --text-muted: #6c6f82;
-  --accent: #f0f0f4;
-  --accent-contrast: #0d0e12;
+  --bg-canvas: #121214;
+  --bg-sidebar: #17171a;
+  --bg-surface: #1e1e22;
+  --bg-surface-hover: #26262b;
+  --bg-bubble-user: #222227;
+  --bg-bubble-bot: #121214;
+  --border-subtle: #27272e;
+  --border-medium: #363640;
+  --text-primary: #ececf1;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #ececf1;
+  --accent-contrast: #121214;
   --accent-indigo: #818cf8;
-  --code-bg: #0b0c10;
-  --code-header-bg: #14151b;
-  --reasoning-bg: #13141a;
-  --reasoning-border: #232530;
-  --bg-primary: #0d0e12;
-  --card-bg: #181920;
+  --code-bg: #0d0d10;
+  --code-header-bg: #18181d;
+  --reasoning-bg: #16161b;
+  --reasoning-border: #27272e;
+  --bg-primary: #121214;
+  --card-bg: #1e1e22;
 }
 
 body {
@@ -889,4 +889,157 @@ kbd {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+/* ==========================================================================
+   Open WebUI Design System Enhancements
+   ========================================================================== */
+
+/* Collapsible Sidebar with smooth width transition */
+#sidebar {
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border 0.2s ease;
+}
+
+#sidebar.collapsed {
+  width: 0px !important;
+  min-width: 0px !important;
+  max-width: 0px !important;
+  padding: 0 !important;
+  border-right-width: 0px !important;
+  overflow: hidden !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#open-sidebar-btn {
+  display: flex !important;
+}
+
+@media (min-width: 768px) {
+  #open-sidebar-btn {
+    display: none !important;
+  }
+  #sidebar.collapsed ~ main #open-sidebar-btn {
+    display: flex !important;
+  }
+}
+
+/* Sidebar Date Group Headers */
+.conv-group-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  padding: 10px 10px 4px 10px;
+  user-select: none;
+}
+
+/* Open WebUI Model Selector Pill */
+.model-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.model-pill:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-medium);
+}
+
+.openwebui-badge {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1.5px 6px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-indigo);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+
+/* Open WebUI Composer Pills */
+.composer-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3.5px 9px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.composer-pill-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+  background: var(--bg-surface-hover);
+}
+
+.composer-pill-btn.active {
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--accent-indigo);
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+/* Live Voice Dictation (Speech-to-Text) Pulse */
+.mic-btn.listening {
+  color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  animation: micPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes micPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    transform: scale(1.12);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+}
+
+/* Open WebUI Settings Multi-Tab Nav */
+.settings-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.settings-tab-btn:hover {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.settings-tab-btn.active {
+  background-color: var(--bg-surface-hover);
+  color: var(--text-primary);
+  font-weight: 600;
+  border-left: 2px solid var(--accent-indigo);
 }
